@@ -27,10 +27,10 @@ struct ReflowView: View {
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Page \(i + 1)")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundColor(.secondary)
                             Text(paragraphs(of: i))
                                 .font(.system(size: fontSize))
-                                .textSelection(.enabled)
+                                .textSelectionIfAvailable()
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
@@ -86,7 +86,7 @@ struct TextViewerView: View {
             ScrollView {
                 Text(document.string ?? "")
                     .font(.system(size: 13, design: .monospaced))
-                    .textSelection(.enabled)
+                    .textSelectionIfAvailable()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(16)
             }
@@ -127,7 +127,7 @@ struct LoupeView: View {
                 } else {
                     Text("Move the pointer over the page")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
@@ -136,7 +136,7 @@ struct LoupeView: View {
             .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.secondary.opacity(0.4)))
         }
         .padding(10)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .panelBackground(cornerRadius: 10)
         .shadow(radius: 8)
         .onAppear { start() }
         .onDisappear { timer?.invalidate() }

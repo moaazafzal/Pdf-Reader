@@ -4,10 +4,6 @@ import SwiftUI
 
 /// Foxit-style start dashboard: quick actions on the left, recent files grid on the right.
 struct StartView: View {
-    @Environment(\.openDocument) private var openDocument
-    @Environment(\.newDocument) private var newDocument
-    @Environment(\.dismissWindow) private var dismissWindow
-
     @State private var recents: [URL] = []
 
     var body: some View {
@@ -26,7 +22,7 @@ struct StartView: View {
                 )
             recentsPane
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(nsColor: .windowBackgroundColor))
+                .background(Color.from(.windowBackgroundColor))
         }
         .frame(width: 800, height: 500)
         .onAppear { loadRecents() }
@@ -48,22 +44,19 @@ struct StartView: View {
                         .opacity(0.8)
                 }
             }
-            .foregroundStyle(.white)
+            .foregroundColor(.white)
             .padding(.top, 28)
 
             Spacer().frame(height: 4)
 
             startButton("Open PDF…", icon: "folder") { openFromPanel() }
-            startButton("New Blank PDF", icon: "doc.badge.plus") {
-                newDocument { PDFFileDocument() }
-                dismissWindow(id: "start")
-            }
+            startButton("New Blank PDF", icon: "doc.badge.plus") { newDocument() }
 
             Spacer()
 
             Text("All tools free: annotate, edit, sign,\nredact, OCR, convert, organize.")
                 .font(.caption)
-                .foregroundStyle(.white.opacity(0.75))
+                .foregroundColor(.white.opacity(0.75))
                 .padding(.bottom, 20)
         }
         .padding(.horizontal, 20)
@@ -78,10 +71,10 @@ struct StartView: View {
                     .fontWeight(.medium)
                 Spacer()
             }
-            .foregroundStyle(.white)
+            .foregroundColor(.white)
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
-            .background(RoundedRectangle(cornerRadius: 8).fill(.white.opacity(0.16)))
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.16)))
         }
         .buttonStyle(.plain)
     }
@@ -96,11 +89,7 @@ struct StartView: View {
                 .padding(.horizontal, 20)
 
             if recents.isEmpty {
-                ContentUnavailableView(
-                    "No Recent Files",
-                    systemImage: "clock",
-                    description: Text("Files you open will show up here.")
-                )
+                EmptyStateView("No Recent Files", systemImage: "clock", message: "Files you open will show up here.")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
@@ -129,7 +118,7 @@ struct StartView: View {
                     .lineLimit(1)
                 Text(url.deletingLastPathComponent().path)
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
@@ -155,10 +144,14 @@ struct StartView: View {
     }
 
     private func open(_ url: URL) {
-        Task {
-            try? await openDocument(at: url)
-            dismissWindow(id: "start")
+        NSDocumentController.shared.openDocument(withContentsOf: url, display: true) { _, _, _ in
+            Task { @MainActor in StartWindowController.shared.close() }
         }
+    }
+
+    private func newDocument() {
+        try? NSDocumentController.shared.openUntitledDocumentAndDisplay(true)
+        StartWindowController.shared.close()
     }
 }
 
@@ -176,16 +169,18 @@ struct RecentThumbnail: View {
             } else {
                 Image(systemName: "doc.text")
                     .font(.system(size: 34))
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(.secondary)
             }
         }
-        .task {
+        .onAppear {
             let target = url
-            let thumb = await Task.detached(priority: .utility) { () -> NSImage? in
-                guard let doc = PDFDocument(url: target), let page = doc.page(at: 0) else { return nil }
-                return page.thumbnail(of: CGSize(width: 240, height: 300), for: .mediaBox)
-            }.value
-            image = thumb
+            Task {
+                let thumb = await Task.detached(priority: .utility) { () -> NSImage? in
+                    guard let doc = PDFDocument(url: target), let page = doc.page(at: 0) else { return nil }
+                    return page.thumbnail(of: CGSize(width: 240, height: 300), for: .mediaBox)
+                }.value
+                image = thumb
+            }
         }
     }
 }

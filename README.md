@@ -10,8 +10,22 @@ SwiftUI + Apple PDFKit — no paid SDKs, no subscriptions, no accounts.
 open build/AquaPDF.app
 ```
 
-Requires Xcode (or Command Line Tools with Swift 6+) and macOS 15+.
-For development: `swift build && swift run`.
+`make-app.sh` produces a **universal binary** (`arm64` + `x86_64`), so the same app runs
+natively on Apple Silicon and on Intel Macs — no Rosetta.
+
+**Runs on macOS 11 Big Sur and later.** That covers every Mac that can run Big Sur:
+MacBook Air and MacBook Pro from late 2013, MacBook from 2015, iMac from 2014,
+Mac mini from 2014, Mac Pro from 2013, iMac Pro, Mac Studio, and all Apple Silicon models.
+
+Building requires Xcode (or Command Line Tools) with Swift 6+ on a recent macOS; the produced
+app still deploys back to Big Sur. For development: `swift build && swift run`.
+
+### Why not 2012 Macs?
+
+2012 Macs cannot install anything newer than macOS 10.15 Catalina, and Catalina predates the
+SwiftUI features this app is built on — no SF Symbols, no `Menu`, no `LazyVGrid`, no SwiftUI
+app lifecycle. Supporting them would mean rewriting the entire interface in AppKit. Everything
+from late 2013 onward is covered.
 
 ## Interface
 

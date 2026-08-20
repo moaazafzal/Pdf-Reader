@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "AquaPDF",
-    platforms: [.macOS(.v15)],
+    platforms: [.macOS(.v11)],
     targets: [
         .executableTarget(
             name: "AquaPDF",

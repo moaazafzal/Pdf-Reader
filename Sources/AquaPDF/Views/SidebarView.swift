@@ -52,11 +52,7 @@ struct AttachmentsListView: View {
         }
 
         if items.isEmpty {
-            ContentUnavailableView(
-                "No Attachments",
-                systemImage: "paperclip",
-                description: Text("Use Comment ▸ File to attach a file to a page.")
-            )
+            EmptyStateView("No Attachments", systemImage: "paperclip", message: "Use Comment ▸ File to attach a file to a page.")
         } else {
             List(items.indices, id: \.self) { index in
                 let item = items[index]
@@ -72,7 +68,7 @@ struct AttachmentsListView: View {
                             .lineLimit(1)
                         Text("Page \(item.page + 1)")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundColor(.secondary)
                     }
                 }
                 .buttonStyle(.plain)
@@ -96,11 +92,7 @@ struct SignaturesListView: View {
         }
 
         if fields.isEmpty {
-            ContentUnavailableView(
-                "No Digital Signatures",
-                systemImage: "signature",
-                description: Text("This document contains no signature fields.")
-            )
+            EmptyStateView("No Digital Signatures", systemImage: "signature", message: "This document contains no signature fields.")
         } else {
             List(fields.indices, id: \.self) { index in
                 let field = fields[index]
@@ -109,7 +101,7 @@ struct SignaturesListView: View {
                         .font(.callout)
                     Text("Page \(field.page + 1)")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(.secondary)
                 }
                 .contentShape(Rectangle())
                 .onTapGesture {
@@ -147,7 +139,7 @@ struct ThumbnailListView: View {
                             )
                         Text("\(i + 1)")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundColor(.secondary)
                     }
                     .frame(maxWidth: .infinity)
                     .contentShape(Rectangle())
@@ -157,7 +149,7 @@ struct ThumbnailListView: View {
                     .id(i)
                 }
             }
-            .onChange(of: viewModel.currentPageIndex) { _, newValue in
+            .onChange(of: viewModel.currentPageIndex) { newValue in
                 proxy.scrollTo(newValue)
             }
         }
@@ -193,7 +185,7 @@ struct OutlineListView: View {
     var body: some View {
         let list = items
         if list.isEmpty {
-            ContentUnavailableView("No Outline", systemImage: "list.bullet.indent")
+            EmptyStateView("No Outline", systemImage: "list.bullet.indent")
         } else {
             List(list) { item in
                 Button {
@@ -226,7 +218,7 @@ struct AnnotationListView: View {
         }
 
         if entries.isEmpty {
-            ContentUnavailableView("No Annotations", systemImage: "text.bubble")
+            EmptyStateView("No Annotations", systemImage: "text.bubble")
         } else {
             List(entries.indices, id: \.self) { idx in
                 let entry = entries[idx]
@@ -239,19 +231,19 @@ struct AnnotationListView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack {
                             Circle()
-                                .fill(Color(nsColor: entry.annotation.color))
+                                .fill(Color.from(entry.annotation.color))
                                 .frame(width: 8, height: 8)
                             Text(entry.annotation.type ?? "Annotation")
                                 .font(.callout.weight(.medium))
                             Spacer()
                             Text("p. \(entry.pageIndex + 1)")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundColor(.secondary)
                         }
                         if let contents = entry.annotation.contents, !contents.isEmpty {
                             Text(contents)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundColor(.secondary)
                                 .lineLimit(2)
                         }
                     }
@@ -273,12 +265,11 @@ struct SearchListView: View {
             TextField("Search document", text: $viewModel.searchText)
                 .textFieldStyle(.roundedBorder)
                 .padding(8)
-                .onSubmit { viewModel.runSearch(in: document) }
 
             Divider()
 
             if viewModel.searchResults.isEmpty {
-                ContentUnavailableView(
+                EmptyStateView(
                     viewModel.searchText.isEmpty ? "Type to Search" : "No Results",
                     systemImage: "magnifyingglass"
                 )
@@ -295,7 +286,7 @@ struct SearchListView: View {
                             if let page = sel.pages.first {
                                 Text("Page \(document.index(for: page) + 1)")
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundColor(.secondary)
                             }
                         }
                     }

@@ -9,7 +9,7 @@ struct PageOrganizerView: View {
     @ObservedObject var viewModel: DocViewModel
     /// Called after each mutation with the PDF data captured before it (for undo).
     var onChanged: (Data?) -> Void
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.presentationMode) private var presentation
 
     @State private var selection: Set<Int> = []
     @State private var refresh = 0
@@ -25,10 +25,10 @@ struct PageOrganizerView: View {
                 Button("Rotate Left") { rotate(-90) }.disabled(selection.isEmpty)
                 Button("Rotate Right") { rotate(90) }.disabled(selection.isEmpty)
                 Button("Extract…") { extract() }.disabled(selection.isEmpty)
-                Button("Delete", role: .destructive) { deleteSelected() }
+                Button("Delete") { deleteSelected() }
                     .disabled(selection.isEmpty || selection.count >= document.pageCount)
                 Divider().frame(height: 16)
-                Button("Done") { dismiss() }
+                Button("Done") { presentation.wrappedValue.dismiss() }
                     .keyboardShortcut(.defaultAction)
             }
             .padding(12)
@@ -63,7 +63,7 @@ struct PageOrganizerView: View {
                     )
                 Text("\(i + 1)")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(.secondary)
                 HStack(spacing: 8) {
                     Button { move(i, by: -1) } label: { Image(systemName: "arrow.left") }
                         .disabled(i == 0)

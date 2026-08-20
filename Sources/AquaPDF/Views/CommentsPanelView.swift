@@ -26,7 +26,7 @@ struct CommentsPanelView: View {
 
             let entries = filteredEntries()
             if entries.isEmpty {
-                ContentUnavailableView("No Comments", systemImage: "text.bubble")
+                EmptyStateView("No Comments", systemImage: "text.bubble")
                     .frame(maxHeight: .infinity)
             } else {
                 List {
@@ -67,7 +67,7 @@ struct CommentsPanelView: View {
                 Toggle(isOn: $checkedOnly) {
                     Image(systemName: "checkmark.square")
                 }
-                .toggleStyle(.button)
+                .toggleStyle(.checkbox)
                 .controlSize(.small)
                 .help("Show checked comments only")
             }
@@ -136,7 +136,7 @@ struct CommentsPanelView: View {
                 .buttonStyle(.plain)
 
                 Circle()
-                    .fill(Color(nsColor: annotation.color))
+                    .fill(Color.from(annotation.color))
                     .frame(width: 8, height: 8)
 
                 Text(annotation.displayKind)
@@ -146,7 +146,7 @@ struct CommentsPanelView: View {
 
                 Text("p. \(entry.pageIndex + 1)")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(.secondary)
             }
 
             if let contents = annotation.contents, !contents.isEmpty {
@@ -160,12 +160,12 @@ struct CommentsPanelView: View {
                     if meta.status != .none {
                         Label(meta.status.rawValue, systemImage: meta.status.systemImage)
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundColor(.secondary)
                     }
                     if !meta.replies.isEmpty {
                         Label("\(meta.replies.count)", systemImage: "arrowshape.turn.up.left")
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundColor(.secondary)
                     }
                 }
             }
@@ -190,16 +190,9 @@ struct CommentsPanelView: View {
                 }
             }
             Divider()
-            Button("Delete", role: .destructive) {
+            Button("Delete") {
                 viewModel.selectedAnnotation = annotation
                 viewModel.deleteSelectedAnnotation()
-            }
-        }
-        .swipeActions {
-            Button {
-                if expanded.contains(key) { expanded.remove(key) } else { expanded.insert(key) }
-            } label: {
-                Image(systemName: "arrowshape.turn.up.left")
             }
         }
     }
@@ -224,7 +217,6 @@ struct CommentsPanelView: View {
                 ))
                 .textFieldStyle(.roundedBorder)
                 .controlSize(.small)
-                .onSubmit { postReply(annotation: annotation, key: key) }
 
                 Button("Post") { postReply(annotation: annotation, key: key) }
                     .controlSize(.small)

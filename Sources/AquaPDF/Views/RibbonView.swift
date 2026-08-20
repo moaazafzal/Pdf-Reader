@@ -19,7 +19,7 @@ struct RibbonView: View {
                 .frame(height: 78)
             Divider()
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(Color.from(.windowBackgroundColor))
         .sheet(isPresented: $showCommandSearch) {
             CommandSearchView(query: $commandQuery, viewModel: viewModel, actions: actions) { newTab in
                 tab = newTab
@@ -43,11 +43,11 @@ struct RibbonView: View {
                             RoundedRectangle(cornerRadius: 5)
                                 .fill(tab == t ? Color.accentColor.opacity(0.15) : .clear)
                         )
-                        .overlay(alignment: .bottom) {
+                        .overlay(
                             Rectangle()
                                 .fill(tab == t ? Color.accentColor : .clear)
                                 .frame(height: 2)
-                        }
+                            , alignment: .bottom)
                 }
                 .buttonStyle(.plain)
             }
@@ -59,10 +59,10 @@ struct RibbonView: View {
             } label: {
                 Label("Search commands", systemImage: "magnifyingglass")
                     .font(.system(size: 11))
-                    .labelStyle(.titleAndIcon)
+                    
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
+            .foregroundColor(.secondary)
             .keyboardShortcut("q", modifiers: [.option])
             .help("Find a command (⌥Q)")
             .padding(.trailing, 8)
@@ -140,7 +140,7 @@ struct RibbonView: View {
                     .font(.system(size: 15, weight: .semibold).monospacedDigit())
                 Text("of \(viewModel.pageCount)")
                     .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(.secondary)
             }
             .frame(width: 46)
             RibbonButton(icon: "chevron.down", title: "Next") { actions.nextPage() }
@@ -222,13 +222,13 @@ struct RibbonView: View {
         RibbonGroup("Style") {
             VStack(spacing: 4) {
                 ColorPicker("", selection: Binding(
-                    get: { Color(nsColor: viewModel.style.color) },
-                    set: { viewModel.style.color = NSColor($0) }
+                    get: { Color.from(viewModel.style.color) },
+                    set: { viewModel.style.color = NSColor.from($0) }
                 ))
                 .labelsHidden()
                 Text("Color")
                     .font(.system(size: 10.5))
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(.secondary)
             }
             .frame(width: 46)
         }
@@ -450,7 +450,7 @@ struct RibbonGroup<Content: View>: View {
                 HStack(alignment: .top, spacing: 2) { content }
                 Text(title)
                     .font(.system(size: 9.5))
-                    .foregroundStyle(.tertiary)
+                    .foregroundColor(Color(.tertiaryLabelColor))
             }
             .padding(.horizontal, 6)
             Divider()
@@ -516,7 +516,7 @@ struct CommandSearchView: View {
     @ObservedObject var viewModel: DocViewModel
     let actions: RibbonActions
     let selectTab: (RibbonTab) -> Void
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.presentationMode) private var presentation
 
     private struct Command: Identifiable {
         let id = UUID()
@@ -583,14 +583,14 @@ struct CommandSearchView: View {
                 Button {
                     selectTab(command.tab)
                     command.run()
-                    dismiss()
+                    presentation.wrappedValue.dismiss()
                 } label: {
                     HStack {
                         Text(command.name)
                         Spacer()
                         Text(command.tab.title)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundColor(.secondary)
                     }
                     .contentShape(Rectangle())
                 }
@@ -600,7 +600,7 @@ struct CommandSearchView: View {
 
             HStack {
                 Spacer()
-                Button("Close") { dismiss() }
+                Button("Close") { presentation.wrappedValue.dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
         }

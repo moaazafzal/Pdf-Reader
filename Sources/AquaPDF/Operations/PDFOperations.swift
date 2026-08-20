@@ -231,10 +231,11 @@ enum PDFOperations {
     // MARK: - Compress / protect
 
     static func writeCompressed(_ document: PDFDocument, to url: URL) throws {
-        let options: [PDFDocumentWriteOption: Any] = [
-            .saveImagesAsJPEGOption: true,
-            .optimizeImagesForScreenOption: true,
-        ]
+        var options: [PDFDocumentWriteOption: Any] = [:]
+        if #available(macOS 13.4, *) {
+            options[.saveImagesAsJPEGOption] = true
+            options[.optimizeImagesForScreenOption] = true
+        }
         guard document.write(to: url, withOptions: options) else { throw CocoaError(.fileWriteUnknown) }
     }
 
@@ -248,8 +249,30 @@ enum PDFOperations {
 
     /// Burns all annotations into page content (rasterizes their appearance, keeps page vectors).
     static func writeFlattened(_ document: PDFDocument, to url: URL) throws {
-        let options: [PDFDocumentWriteOption: Any] = [.burnInAnnotationsOption: true]
-        guard document.write(to: url, withOptions: options) else { throw CocoaError(.fileWriteUnknown) }
+        if #available(macOS 13, *) {
+            let options: [PDFDocumentWriteOption: Any] = [.burnInAnnotationsOption: true]
+            guard document.write(to: url, withOptions: options) else { throw CocoaError(.fileWriteUnknown) }
+            return
+        }
+        // Big Sur / Monterey: draw each page plus its annotation appearances into a new PDF.
+        let data = NSMutableData()
+        guard let consumer = CGDataConsumer(data: data) else { throw CocoaError(.fileWriteUnknown) }
+        var box = document.page(at: 0)?.bounds(for: .mediaBox) ?? CGRect(x: 0, y: 0, width: 612, height: 792)
+        guard let ctx = CGContext(consumer: consumer, mediaBox: &box, nil) else {
+            throw CocoaError(.fileWriteUnknown)
+        }
+        for i in 0..<document.pageCount {
+            guard let page = document.page(at: i), let cgPage = page.pageRef else { continue }
+            var pageBox = page.bounds(for: .mediaBox)
+            ctx.beginPDFPage([kCGPDFContextMediaBox: NSData(
+                bytes: &pageBox, length: MemoryLayout<CGRect>.size
+            )] as CFDictionary)
+            ctx.drawPDFPage(cgPage)
+            for annotation in page.annotations { annotation.draw(with: .mediaBox, in: ctx) }
+            ctx.endPDFPage()
+        }
+        ctx.closePDF()
+        try (data as Data).write(to: url)
     }
 
     // MARK: - Export

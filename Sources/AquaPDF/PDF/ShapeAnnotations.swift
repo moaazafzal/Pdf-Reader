@@ -131,7 +131,7 @@ final class PathAnnotation: PDFAnnotation {
     override func draw(with box: PDFDisplayBox, in context: CGContext) {
         context.saveGState()
         context.translateBy(x: bounds.origin.x, y: bounds.origin.y)
-        let path = localPath().cgPath
+        let path = localPath().compatCGPath
         if let fillColor {
             context.setFillColor(fillColor.cgColor)
             context.addPath(path)
@@ -250,7 +250,7 @@ final class MeasureAnnotation: PDFAnnotation {
         context.setStrokeColor(strokeColor.cgColor)
         context.setLineWidth(1.5)
         context.setLineJoin(.round)
-        context.addPath(localPath().cgPath)
+        context.addPath(localPath().compatCGPath)
         context.strokePath()
 
         // End caps for distance measurements.

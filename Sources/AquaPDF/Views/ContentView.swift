@@ -7,9 +7,6 @@ struct ContentView: View {
     @ObservedObject var document: PDFFileDocument
     @StateObject private var viewModel = DocViewModel()
     @State private var showInspector = false
-    @State private var passwordPrompt = false
-    @State private var passwordDraft = ""
-    @State private var confirmRedactions = false
     @State private var busyMessage: String?
     @State private var statusMessage: String?
     @Environment(\.undoManager) private var undoManager
@@ -30,10 +27,6 @@ struct ContentView: View {
             }
 
             statusBar
-        }
-        .inspector(isPresented: $showInspector) {
-            InspectorView(viewModel: viewModel)
-                .inspectorColumnWidth(min: 220, ideal: 250, max: 320)
         }
         .sheet(item: $viewModel.pendingTextRequest) { request in
             TextPromptSheet(request: request, viewModel: viewModel)
@@ -63,20 +56,7 @@ struct ContentView: View {
                 viewModel.pageCount = document.pdf.pageCount
             }
         }
-        .alert("Set Password", isPresented: $passwordPrompt) {
-            SecureField("Password", text: $passwordDraft)
-            Button("Save Protected Copy…") { saveProtectedCopy() }
-            Button("Cancel", role: .cancel) { passwordDraft = "" }
-        } message: {
-            Text("Saves an encrypted copy of this PDF. The original file is not changed.")
-        }
-        .alert("Apply Redactions?", isPresented: $confirmRedactions) {
-            Button("Apply", role: .destructive) { applyRedactions() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Pages with redaction marks are converted to 300 dpi images with the marked areas removed. Text and graphics under the marks are permanently destroyed and the pages lose selectable text (run OCR afterwards if needed).")
-        }
-        .onChange(of: viewModel.tool) { _, newTool in
+        .onChange(of: viewModel.tool) { newTool in
             if newTool == .imageStamp {
                 pickStampImage()
             } else if newTool == .signature,
@@ -97,42 +77,55 @@ struct ContentView: View {
                 Divider()
             }
             pdfArea
+            if showInspector {
+                Divider()
+                InspectorView(viewModel: viewModel)
+                    .frame(width: 250)
+            }
         }
     }
 
     @ViewBuilder
     private var pdfArea: some View {
         let primary = PDFKitView(document: document.pdf, viewModel: viewModel)
-            .overlay(alignment: .topTrailing) {
-                if viewModel.showLoupe {
-                    LoupeView(viewModel: viewModel)
-                        .padding(12)
-                }
-            }
-            .overlay(alignment: .bottom) {
-                if let statusMessage {
-                    Text(statusMessage)
-                        .font(.callout)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(.thinMaterial, in: Capsule())
-                        .padding(.bottom, 12)
-                        .transition(.opacity)
-                }
-            }
-            .overlay {
-                if let busyMessage {
-                    ZStack {
-                        Color.black.opacity(0.25)
-                        VStack(spacing: 10) {
-                            ProgressView()
-                            Text(busyMessage)
+            .overlay(
+                Group {
+                    if viewModel.showLoupe {
+                        LoupeView(viewModel: viewModel)
+                            .padding(12)
+                    }
+                },
+                alignment: .topTrailing
+            )
+            .overlay(
+                Group {
+                    if let statusMessage {
+                        Text(statusMessage)
+                            .font(.callout)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .capsuleBackground()
+                            .padding(.bottom, 12)
+                            .transition(.opacity)
+                    }
+                },
+                alignment: .bottom
+            )
+            .overlay(
+                Group {
+                    if let busyMessage {
+                        ZStack {
+                            Color.black.opacity(0.25)
+                            VStack(spacing: 10) {
+                                ProgressView()
+                                Text(busyMessage)
+                            }
+                            .padding(24)
+                            .panelBackground(cornerRadius: 12)
                         }
-                        .padding(24)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                     }
                 }
-            }
+            )
 
         switch viewModel.splitMode {
         case .none:
@@ -199,11 +192,11 @@ struct ContentView: View {
         }
         .buttonStyle(.borderless)
         .controlSize(.small)
-        .foregroundStyle(.secondary)
+        .foregroundColor(.secondary)
         .padding(.horizontal, 12)
         .padding(.vertical, 4)
-        .background(Color(nsColor: .windowBackgroundColor))
-        .overlay(alignment: .top) { Divider() }
+        .background(Color.from(.windowBackgroundColor))
+        .overlay(Divider(), alignment: .top)
     }
 
     // MARK: - Handlers
@@ -260,9 +253,9 @@ struct ContentView: View {
             merge: { mergePDFs() },
             split: { splitPDF() },
             compress: { saveCompressedCopy() },
-            protect: { passwordPrompt = true },
+            protect: { saveProtectedCopy() },
             flatten: { saveFlattenedCopy() },
-            applyRedactions: { confirmRedactions = true },
+            applyRedactions: { applyRedactions() },
             inspectActions: { inspectActions() },
             ocrSearchable: { runOCRSearchable() },
             ocrText: { runOCRText() },
@@ -515,17 +508,11 @@ struct ContentView: View {
     }
 
     private func makeDefaultReader() {
-        Task {
-            do {
-                try await NSWorkspace.shared.setDefaultApplication(
-                    at: Bundle.main.bundleURL,
-                    toOpen: .pdf
-                )
-                flash("AquaPDF is now the default PDF app")
-            } catch {
-                flash("Could not change the default app: \(error.localizedDescription)")
-            }
-        }
+        guard let bundleID = Bundle.main.bundleIdentifier else { return }
+        // LSSetDefaultRoleHandlerForContentType works back to macOS 10.10;
+        // NSWorkspace.setDefaultApplication is macOS 12+.
+        let status = LSSetDefaultRoleHandlerForContentType("com.adobe.pdf" as CFString, .all, bundleID as CFString)
+        flash(status == noErr ? "AquaPDF is now the default PDF app" : "Could not change the default app")
     }
 
     // MARK: - Printing
@@ -609,9 +596,11 @@ struct ContentView: View {
     }
 
     private func saveProtectedCopy() {
-        defer { passwordDraft = "" }
-        let password = passwordDraft
-        guard !password.isEmpty, let url = savePanel(suggested: baseName() + "-protected.pdf") else { return }
+        guard let password = InputPrompt.runSecure(
+            title: "Protect With Password",
+            message: "Saves an encrypted copy of this PDF. The original file is not changed."
+        ) else { return }
+        guard let url = savePanel(suggested: baseName() + "-protected.pdf") else { return }
         do {
             try PDFOperations.writeProtected(document.pdf, to: url, password: password)
             flash("Encrypted copy saved")
@@ -631,6 +620,11 @@ struct ContentView: View {
     }
 
     private func applyRedactions() {
+        guard InputPrompt.confirmDestructive(
+            title: "Apply Redactions?",
+            message: "Pages with redaction marks are converted to 300 dpi images with the marked areas removed. Text and graphics under the marks are permanently destroyed and the pages lose selectable text (run OCR afterwards if needed).",
+            confirmTitle: "Apply"
+        ) else { return }
         let before = document.pdf.dataRepresentation()
         let n = PDFOperations.applyRedactions(in: document.pdf)
         if n == 0 {
@@ -779,23 +773,23 @@ struct SecondaryPDFView: NSViewRepresentable {
 struct TextPromptSheet: View {
     let request: DocViewModel.PendingTextRequest
     @ObservedObject var viewModel: DocViewModel
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.presentationMode) private var presentation
     @State private var text = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Add Note")
                 .font(.headline)
-            TextField("Note", text: $text, axis: .vertical)
-                .lineLimit(3...8)
+            TextField("Note", text: $text)
+                .lineLimit(8)
                 .frame(width: 320)
             HStack {
                 Spacer()
-                Button("Cancel") { dismiss() }
+                Button("Cancel") { presentation.wrappedValue.dismiss() }
                     .keyboardShortcut(.cancelAction)
                 Button("Add") {
                     addAnnotation()
-                    dismiss()
+                    presentation.wrappedValue.dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
                 .disabled(text.isEmpty)

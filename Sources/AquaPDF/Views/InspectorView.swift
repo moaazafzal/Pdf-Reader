@@ -9,46 +9,46 @@ struct InspectorView: View {
     var body: some View {
         Form {
             if let annotation = viewModel.selectedAnnotation {
-                Section("Annotation") {
-                    LabeledContent("Type", value: annotation.type ?? "Unknown")
+                Section(header: Text("Annotation")) {
+                    LabeledRow("Type", value: annotation.type ?? "Unknown")
 
                     ColorPicker("Color", selection: Binding(
-                        get: { Color(nsColor: annotation.color) },
+                        get: { Color.from(annotation.color) },
                         set: { newValue in
-                            annotation.color = NSColor(newValue)
+                            annotation.color = NSColor.from(newValue)
                             viewModel.pdfView?.setNeedsDisplay(viewModel.pdfView?.bounds ?? .zero)
                         }
                     ))
 
-                    TextField("Note", text: $contentsDraft, axis: .vertical)
-                        .lineLimit(3...8)
-                        .onChange(of: contentsDraft) { _, newValue in
+                    TextField("Note", text: $contentsDraft)
+                        .lineLimit(8)
+                        .onChange(of: contentsDraft) { newValue in
                             annotation.contents = newValue
                         }
 
-                    Button("Delete Annotation", role: .destructive) {
+                    Button("Delete Annotation") {
                         viewModel.deleteSelectedAnnotation()
                     }
                 }
                 .onAppear { contentsDraft = annotation.contents ?? "" }
             } else {
-                Section("Tool Defaults") {
+                Section(header: Text("Tool Defaults")) {
                     ColorPicker("Color", selection: Binding(
-                        get: { Color(nsColor: viewModel.style.color) },
-                        set: { viewModel.style.color = NSColor($0) }
+                        get: { Color.from(viewModel.style.color) },
+                        set: { viewModel.style.color = NSColor.from($0) }
                     ))
                     Slider(value: $viewModel.style.lineWidth, in: 1...12) {
                         Text("Line Width")
                     }
-                    LabeledContent("Width", value: String(format: "%.0f pt", viewModel.style.lineWidth))
+                    LabeledRow("Width", value: String(format: "%.0f pt", viewModel.style.lineWidth))
                 }
                 Text("Select an annotation to edit it.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(.secondary)
             }
         }
-        .formStyle(.grouped)
-        .onChange(of: viewModel.selectedAnnotation) { _, newValue in
+        .groupedForm()
+        .onChange(of: viewModel.selectedAnnotation) { newValue in
             contentsDraft = newValue?.contents ?? ""
         }
     }

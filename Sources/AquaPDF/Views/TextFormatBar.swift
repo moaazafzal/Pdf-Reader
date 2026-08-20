@@ -31,7 +31,7 @@ struct TextFormatBar: View {
         HStack(spacing: 8) {
             Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
                 .font(.system(size: 11))
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
                 .help("Drag the box border to move it")
 
             Picker("", selection: $state.fontName) {
@@ -53,23 +53,23 @@ struct TextFormatBar: View {
             Toggle(isOn: $state.bold) {
                 Image(systemName: "bold")
             }
-            .toggleStyle(.button)
+            .toggleStyle(.checkbox)
 
             Toggle(isOn: $state.italic) {
                 Image(systemName: "italic")
             }
-            .toggleStyle(.button)
+            .toggleStyle(.checkbox)
 
             ColorPicker("", selection: Binding(
-                get: { Color(nsColor: state.color) },
-                set: { state.color = NSColor($0) }
+                get: { Color.from(state.color) },
+                set: { state.color = NSColor.from($0) }
             ))
             .labelsHidden()
         }
         .controlSize(.small)
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+        .panelBackground(cornerRadius: 8)
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.3)))
         .shadow(radius: 4, y: 2)
     }

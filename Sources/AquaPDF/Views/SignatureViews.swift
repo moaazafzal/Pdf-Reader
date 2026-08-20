@@ -1,9 +1,40 @@
 import AppKit
 import SwiftUI
 
+/// Freehand stroke preview. SwiftUI's `Canvas` is macOS 12+, so this draws through AppKit.
+struct InkCanvas: NSViewRepresentable {
+    let strokes: [[CGPoint]]
+    let currentStroke: [CGPoint]
+
+    final class StrokeView: NSView {
+        var strokes: [[CGPoint]] = []
+        override var isFlipped: Bool { true }
+
+        override func draw(_ dirtyRect: NSRect) {
+            NSColor.black.setStroke()
+            for stroke in strokes where stroke.count > 1 {
+                let path = NSBezierPath()
+                path.lineWidth = 2.5
+                path.lineCapStyle = .round
+                path.lineJoinStyle = .round
+                path.move(to: stroke[0])
+                for point in stroke.dropFirst() { path.line(to: point) }
+                path.stroke()
+            }
+        }
+    }
+
+    func makeNSView(context: Context) -> StrokeView { StrokeView() }
+
+    func updateNSView(_ view: StrokeView, context: Context) {
+        view.strokes = strokes + (currentStroke.isEmpty ? [] : [currentStroke])
+        view.needsDisplay = true
+    }
+}
+
 /// Sheet for drawing, saving, and picking signatures.
 struct SignatureManagerView: View {
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.presentationMode) private var presentation
     var onPick: (NSImage) -> Void
 
     @State private var strokes: [[CGPoint]] = []
@@ -17,26 +48,18 @@ struct SignatureManagerView: View {
             Text("Draw Signature")
                 .font(.headline)
 
-            Canvas { context, _ in
-                for stroke in strokes + (currentStroke.isEmpty ? [] : [currentStroke]) {
-                    guard stroke.count > 1 else { continue }
-                    var path = Path()
-                    path.move(to: stroke[0])
-                    for p in stroke.dropFirst() { path.addLine(to: p) }
-                    context.stroke(path, with: .color(.black), style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
-                }
-            }
-            .frame(width: canvasSize.width, height: canvasSize.height)
-            .background(Color.white)
-            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.4)))
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in currentStroke.append(value.location) }
-                    .onEnded { _ in
-                        if currentStroke.count > 1 { strokes.append(currentStroke) }
-                        currentStroke = []
-                    }
-            )
+            InkCanvas(strokes: strokes, currentStroke: currentStroke)
+                .frame(width: canvasSize.width, height: canvasSize.height)
+                .background(Color.white)
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.4)))
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in currentStroke.append(value.location) }
+                        .onEnded { _ in
+                            if currentStroke.count > 1 { strokes.append(currentStroke) }
+                            currentStroke = []
+                        }
+                )
 
             HStack {
                 Button("Clear") { strokes = []; currentStroke = [] }
@@ -45,7 +68,7 @@ struct SignatureManagerView: View {
                     if let image = renderImage() {
                         _ = try? SignatureStore.save(image)
                         onPick(image)
-                        dismiss()
+                        presentation.wrappedValue.dismiss()
                     }
                 }
                 .keyboardShortcut(.defaultAction)
@@ -63,7 +86,7 @@ struct SignatureManagerView: View {
                                 VStack(spacing: 4) {
                                     Button {
                                         onPick(image)
-                                        dismiss()
+                                        presentation.wrappedValue.dismiss()
                                     } label: {
                                         Image(nsImage: image)
                                             .resizable()
@@ -88,7 +111,7 @@ struct SignatureManagerView: View {
 
             HStack {
                 Spacer()
-                Button("Cancel") { dismiss() }
+                Button("Cancel") { presentation.wrappedValue.dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
         }

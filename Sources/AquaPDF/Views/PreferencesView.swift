@@ -5,7 +5,7 @@ import SwiftUI
 /// App preferences (Foxit: File ▸ Preferences).
 struct PreferencesView: View {
     @ObservedObject var viewModel: DocViewModel
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.presentationMode) private var presentation
 
     @AppStorage("authorName") private var authorName: String = NSFullUserName()
     @AppStorage("organization") private var organization: String = ""
@@ -30,45 +30,45 @@ struct PreferencesView: View {
         .frame(width: 470, height: 330)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Done") { dismiss() }
+                Button("Done") { presentation.wrappedValue.dismiss() }
             }
         }
     }
 
     private var identityTab: some View {
         Form {
-            Section("Author identity used on comments and replies") {
+            Section(header: Text("Author identity used on comments and replies")) {
                 TextField("Name", text: $authorName)
                 TextField("Organization", text: $organization)
             }
         }
-        .formStyle(.grouped)
+        .groupedForm()
     }
 
     private var commentingTab: some View {
         Form {
-            Section("Making comments") {
+            Section(header: Text("Making comments")) {
                 Toggle("Copy marked text into the comment note", isOn: $viewModel.copyMarkedTextIntoNote)
             }
-            Section("Default appearance") {
+            Section(header: Text("Default appearance")) {
                 ColorPicker("Markup color", selection: Binding(
-                    get: { Color(nsColor: viewModel.style.color) },
-                    set: { viewModel.style.color = NSColor($0) }
+                    get: { Color.from(viewModel.style.color) },
+                    set: { viewModel.style.color = NSColor.from($0) }
                 ))
                 ColorPicker("Text color", selection: Binding(
-                    get: { Color(nsColor: viewModel.style.textColor) },
-                    set: { viewModel.style.textColor = NSColor($0) }
+                    get: { Color.from(viewModel.style.textColor) },
+                    set: { viewModel.style.textColor = NSColor.from($0) }
                 ))
                 Slider(value: $viewModel.style.lineWidth, in: 1...12) { Text("Line width") }
                 Toggle("Dashed lines", isOn: $viewModel.style.dashed)
             }
         }
-        .formStyle(.grouped)
+        .groupedForm()
     }
 
     private var pageDisplayTab: some View {
         Form {
-            Section("Default layout and zoom") {
+            Section(header: Text("Default layout and zoom")) {
                 Picker("Page layout", selection: $defaultLayoutRaw) {
                     Text("Single Page").tag(PDFDisplayMode.singlePage.rawValue)
                     Text("Continuous").tag(PDFDisplayMode.singlePageContinuous.rawValue)
@@ -77,24 +77,24 @@ struct PreferencesView: View {
                 }
                 Stepper("Zoom: \(defaultZoomPercent)%", value: $defaultZoomPercent, in: 25...400, step: 25)
             }
-            Section("Rendering") {
+            Section(header: Text("Rendering")) {
                 Toggle("Smooth text and line art", isOn: $smoothText)
             }
-            Section("Appearance") {
+            Section(header: Text("Appearance")) {
                 Picker("Theme", selection: $appearanceRaw) {
                     Text("System").tag("system")
                     Text("Light").tag("light")
                     Text("Dark").tag("dark")
                 }
-                .onChange(of: appearanceRaw) { _, value in Self.applyAppearance(value) }
+                .onChange(of: appearanceRaw) { value in Self.applyAppearance(value) }
             }
         }
-        .formStyle(.grouped)
+        .groupedForm()
     }
 
     private var measuringTab: some View {
         Form {
-            Section("Measurement units") {
+            Section(header: Text("Measurement units")) {
                 Picker("Unit", selection: Binding(
                     get: { viewModel.measureScale.unit },
                     set: { unit in
@@ -107,25 +107,25 @@ struct PreferencesView: View {
                         Text(preset.name).tag(preset.unit)
                     }
                 }
-                LabeledContent("Scale", value: String(format: "%.4f %@ per point",
+                LabeledRow("Scale", value: String(format: "%.4f %@ per point",
                                                       viewModel.measureScale.unitsPerPoint,
                                                       viewModel.measureScale.unit))
             }
         }
-        .formStyle(.grouped)
+        .groupedForm()
     }
 
     private var generalTab: some View {
         Form {
-            Section("Application startup") {
+            Section(header: Text("Application startup")) {
                 Toggle("Show Start page", isOn: $showStartPage)
                 Toggle("Restore last session", isOn: $restoreLastSession)
             }
-            Section("Documents") {
+            Section(header: Text("Documents")) {
                 Stepper("Auto-save every \(autoSaveMinutes) min", value: $autoSaveMinutes, in: 1...60)
                 Toggle("Highlight form fields", isOn: $highlightFormFields)
             }
-            Section("SnapShot") {
+            Section(header: Text("SnapShot")) {
                 Picker("Resolution", selection: $snapshotDPI) {
                     Text("72 dpi").tag(72)
                     Text("144 dpi").tag(144)
@@ -133,7 +133,7 @@ struct PreferencesView: View {
                 }
             }
         }
-        .formStyle(.grouped)
+        .groupedForm()
     }
 
     static func applyAppearance(_ value: String) {
@@ -148,7 +148,7 @@ struct PreferencesView: View {
 /// Document Properties (Foxit: File ▸ Properties, ⌘D).
 struct DocumentPropertiesView: View {
     let document: PDFDocument
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.presentationMode) private var presentation
 
     var body: some View {
         TabView {
@@ -158,7 +158,7 @@ struct DocumentPropertiesView: View {
         }
         .frame(width: 460, height: 320)
         .toolbar {
-            ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+            ToolbarItem(placement: .confirmationAction) { Button("Done") { presentation.wrappedValue.dismiss() } }
         }
     }
 
@@ -170,50 +170,50 @@ struct DocumentPropertiesView: View {
 
     private var descriptionTab: some View {
         Form {
-            Section("Document") {
-                LabeledContent("File", value: document.documentURL?.lastPathComponent ?? "Untitled")
-                LabeledContent("Title", value: attribute(.titleAttribute))
-                LabeledContent("Author", value: attribute(.authorAttribute))
-                LabeledContent("Subject", value: attribute(.subjectAttribute))
-                LabeledContent("Keywords", value: attribute(.keywordsAttribute))
-                LabeledContent("Creator", value: attribute(.creatorAttribute))
-                LabeledContent("Producer", value: attribute(.producerAttribute))
+            Section(header: Text("Document")) {
+                LabeledRow("File", value: document.documentURL?.lastPathComponent ?? "Untitled")
+                LabeledRow("Title", value: attribute(.titleAttribute))
+                LabeledRow("Author", value: attribute(.authorAttribute))
+                LabeledRow("Subject", value: attribute(.subjectAttribute))
+                LabeledRow("Keywords", value: attribute(.keywordsAttribute))
+                LabeledRow("Creator", value: attribute(.creatorAttribute))
+                LabeledRow("Producer", value: attribute(.producerAttribute))
             }
-            Section("Statistics") {
-                LabeledContent("Pages", value: "\(document.pageCount)")
+            Section(header: Text("Statistics")) {
+                LabeledRow("Pages", value: "\(document.pageCount)")
                 if let page = document.page(at: 0) {
                     let size = page.bounds(for: .mediaBox).size
-                    LabeledContent("Page size", value: String(format: "%.0f × %.0f pt", size.width, size.height))
+                    LabeledRow("Page size", value: String(format: "%.0f × %.0f pt", size.width, size.height))
                 }
                 if let url = document.documentURL,
                    let bytes = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize {
-                    LabeledContent("File size", value: ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file))
+                    LabeledRow("File size", value: ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file))
                 }
             }
         }
-        .formStyle(.grouped)
+        .groupedForm()
     }
 
     private var securityTab: some View {
         Form {
-            Section("Security") {
-                LabeledContent("Encrypted", value: document.isEncrypted ? "Yes" : "No")
-                LabeledContent("Locked", value: document.isLocked ? "Yes" : "No")
-                LabeledContent("Printing", value: document.allowsPrinting ? "Allowed" : "Not allowed")
-                LabeledContent("Copying", value: document.allowsCopying ? "Allowed" : "Not allowed")
-                LabeledContent("Commenting", value: document.allowsCommenting ? "Allowed" : "Not allowed")
-                LabeledContent("Form filling", value: document.allowsFormFieldEntry ? "Allowed" : "Not allowed")
-                LabeledContent("Content changes", value: document.allowsDocumentChanges ? "Allowed" : "Not allowed")
+            Section(header: Text("Security")) {
+                LabeledRow("Encrypted", value: document.isEncrypted ? "Yes" : "No")
+                LabeledRow("Locked", value: document.isLocked ? "Yes" : "No")
+                LabeledRow("Printing", value: document.allowsPrinting ? "Allowed" : "Not allowed")
+                LabeledRow("Copying", value: document.allowsCopying ? "Allowed" : "Not allowed")
+                LabeledRow("Commenting", value: document.allowsCommenting ? "Allowed" : "Not allowed")
+                LabeledRow("Form filling", value: document.allowsFormFieldEntry ? "Allowed" : "Not allowed")
+                LabeledRow("Content changes", value: document.allowsDocumentChanges ? "Allowed" : "Not allowed")
             }
         }
-        .formStyle(.grouped)
+        .groupedForm()
     }
 
     private var fontsTab: some View {
         let fonts = fontNames()
         return Group {
             if fonts.isEmpty {
-                ContentUnavailableView("No Embedded Font Data", systemImage: "textformat")
+                EmptyStateView("No Embedded Font Data", systemImage: "textformat")
             } else {
                 List(fonts, id: \.self) { Text($0).font(.callout) }
             }
@@ -243,7 +243,7 @@ struct DocumentPropertiesView: View {
 /// Stamps palette (Foxit: Comment ▸ Stamp).
 struct StampPaletteView: View {
     @ObservedObject var viewModel: DocViewModel
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.presentationMode) private var presentation
 
     private let standard = ["APPROVED", "REVIEWED", "DRAFT", "FINAL", "CONFIDENTIAL", "NOT APPROVED", "VOID", "COMPLETED"]
     private let signHere = ["SIGN HERE", "INITIAL HERE", "WITNESS", "ACCEPTED"]
@@ -263,7 +263,7 @@ struct StampPaletteView: View {
                 Button("From Clipboard") { placeClipboardImage() }
                 Button("From File…") { placeImageFile() }
                 Spacer()
-                Button("Cancel") { dismiss() }
+                Button("Cancel") { presentation.wrappedValue.dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
         }
@@ -275,16 +275,16 @@ struct StampPaletteView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 8)], spacing: 8) {
                 ForEach(stamps, id: \.self) { stamp in
                     Button { choose(stamp, color: color) } label: {
                         Text(stamp)
                             .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(Color(nsColor: color))
+                            .foregroundColor(Color.from(color))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 7)
-                            .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color(nsColor: color), lineWidth: 1.5))
+                            .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.from(color), lineWidth: 1.5))
                     }
                     .buttonStyle(.plain)
                 }
@@ -299,7 +299,7 @@ struct StampPaletteView: View {
         viewModel.style.color = color
         viewModel.tool = .stamp
         viewModel.flashHandler?("Click the page to place the stamp")
-        dismiss()
+        presentation.wrappedValue.dismiss()
     }
 
     private func placeDynamic() {
@@ -321,7 +321,7 @@ struct StampPaletteView: View {
         view.pendingStampImage = image
         viewModel.tool = .stamp
         viewModel.flashHandler?("Click the page to place the stamp")
-        dismiss()
+        presentation.wrappedValue.dismiss()
     }
 
     private func placeImageFile() {
@@ -334,6 +334,6 @@ struct StampPaletteView: View {
         view.pendingStampImage = image
         viewModel.tool = .stamp
         viewModel.flashHandler?("Click the page to place the stamp")
-        dismiss()
+        presentation.wrappedValue.dismiss()
     }
 }

@@ -1321,6 +1321,33 @@ enum InputPrompt {
         let value = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         return value.isEmpty ? nil : value
     }
+
+    /// Modal password prompt. Returns nil when cancelled or left empty.
+    @MainActor
+    static func runSecure(title: String, message: String) -> String? {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.addButton(withTitle: "Continue")
+        alert.addButton(withTitle: "Cancel")
+        let field = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
+        alert.accessoryView = field
+        alert.window.initialFirstResponder = field
+        guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+        return field.stringValue.isEmpty ? nil : field.stringValue
+    }
+
+    /// Modal confirmation for a destructive action.
+    @MainActor
+    static func confirmDestructive(title: String, message: String, confirmTitle: String) -> Bool {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: confirmTitle)
+        alert.addButton(withTitle: "Cancel")
+        return alert.runModal() == .alertFirstButtonReturn
+    }
 }
 
 extension PDFAnnotation {
