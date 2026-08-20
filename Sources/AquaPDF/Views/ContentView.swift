@@ -15,41 +15,15 @@ struct ContentView: View {
     @Environment(\.undoManager) private var undoManager
 
     var body: some View {
-        NavigationSplitView {
-            SidebarView(document: document.pdf, viewModel: viewModel)
-                .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 280)
-        } detail: {
-            PDFKitView(document: document.pdf, viewModel: viewModel)
-                .overlay(alignment: .bottom) {
-                    if let statusMessage {
-                        Text(statusMessage)
-                            .font(.callout)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(.thinMaterial, in: Capsule())
-                            .padding(.bottom, 12)
-                            .transition(.opacity)
-                    }
-                }
-                .overlay {
-                    if let busyMessage {
-                        ZStack {
-                            Color.black.opacity(0.25)
-                            VStack(spacing: 10) {
-                                ProgressView()
-                                Text(busyMessage)
-                            }
-                            .padding(24)
-                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-                        }
-                    }
-                }
+        VStack(spacing: 0) {
+            RibbonView(viewModel: viewModel, actions: ribbonActions)
+            mainSplit
+            statusBar
         }
         .inspector(isPresented: $showInspector) {
             InspectorView(viewModel: viewModel)
                 .inspectorColumnWidth(min: 220, ideal: 250, max: 320)
         }
-        .toolbar { toolbarContent }
         .sheet(item: $viewModel.pendingTextRequest) { request in
             TextPromptSheet(request: request, viewModel: viewModel)
         }
@@ -92,80 +66,86 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Toolbar
-
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        ToolbarItemGroup {
-            Picker("Tool", selection: $viewModel.tool) {
-                ForEach(Tool.allCases) { tool in
-                    Label(tool.label, systemImage: tool.systemImage).tag(tool)
+    private var mainSplit: some View {
+        NavigationSplitView {
+            SidebarView(document: document.pdf, viewModel: viewModel)
+                .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 280)
+        } detail: {
+            PDFKitView(document: document.pdf, viewModel: viewModel)
+                .overlay(alignment: .bottom) {
+                    if let statusMessage {
+                        Text(statusMessage)
+                            .font(.callout)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(.thinMaterial, in: Capsule())
+                            .padding(.bottom, 12)
+                            .transition(.opacity)
+                    }
                 }
-            }
-            .pickerStyle(.menu)
-            .help("Annotation tool")
-
-            ColorPicker("", selection: Binding(
-                get: { Color(nsColor: viewModel.style.color) },
-                set: { viewModel.style.color = NSColor($0) }
-            ))
-            .labelsHidden()
-            .help("Annotation color")
+                .overlay {
+                    if let busyMessage {
+                        ZStack {
+                            Color.black.opacity(0.25)
+                            VStack(spacing: 10) {
+                                ProgressView()
+                                Text(busyMessage)
+                            }
+                            .padding(24)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                        }
+                    }
+                }
         }
+    }
 
-        ToolbarItemGroup {
-            Button { viewModel.pdfView?.zoomOut(nil) } label: {
-                Image(systemName: "minus.magnifyingglass")
-            }
-            Button { viewModel.pdfView?.zoomIn(nil) } label: {
-                Image(systemName: "plus.magnifyingglass")
-            }
-            Text("p. \(viewModel.currentPageIndex + 1)/\(viewModel.pageCount)")
-                .font(.callout.monospacedDigit())
-                .foregroundStyle(.secondary)
+    // MARK: - Status bar
+
+    private var statusBar: some View {
+        HStack {
+            Text("Page \(viewModel.currentPageIndex + 1) of \(viewModel.pageCount)")
+            Spacer()
+            Text("\(Int(viewModel.scaleFactor * 100))%")
         }
+        .font(.system(size: 11).monospacedDigit())
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 4)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .overlay(alignment: .top) { Divider() }
+    }
 
-        ToolbarItemGroup {
-            Button {
-                viewModel.showOrganizer = true
-            } label: {
-                Label("Organize Pages", systemImage: "square.grid.3x3")
-            }
-            .help("Reorder, rotate, delete, extract pages")
+    // MARK: - Ribbon wiring
 
-            Menu {
-                Section("Document") {
-                    Button("Merge PDFs Into This Document…") { mergePDFs() }
-                    Button("Split Into Single Pages…") { splitPDF() }
-                    Button("Save Compressed Copy…") { saveCompressedCopy() }
-                    Button("Protect With Password…") { passwordPrompt = true }
-                    Button("Flatten Annotations & Save Copy…") { saveFlattenedCopy() }
-                }
-                Section("Redaction") {
-                    Button("Apply Redactions…", role: .destructive) { confirmRedactions = true }
-                }
-                Section("OCR (Apple Vision)") {
-                    Button("Make Searchable PDF…") { runOCRSearchable() }
-                    Button("Export Recognized Text…") { runOCRText() }
-                }
-                Section("Export") {
-                    Button("Export as Word (.docx)…") { exportDocx() }
-                    Button("Export Pages as PNG…") { exportImages() }
-                    Button("Export Text…") { exportText() }
-                }
-                Section("Signatures") {
-                    Button("Manage Signatures…") { viewModel.showSignatureManager = true }
-                }
-            } label: {
-                Label("Tools", systemImage: "wrench.and.screwdriver")
+    private var ribbonActions: RibbonActions {
+        RibbonActions(
+            zoomIn: { viewModel.pdfView?.zoomIn(nil) },
+            zoomOut: { viewModel.pdfView?.zoomOut(nil) },
+            fitWidth: { viewModel.pdfView?.autoScales = true },
+            actualSize: { viewModel.pdfView?.scaleFactor = 1 },
+            previousPage: { viewModel.pdfView?.goToPreviousPage(nil) },
+            nextPage: { viewModel.pdfView?.goToNextPage(nil) },
+            addImage: { viewModel.tool = .imageStamp },
+            organizer: { viewModel.showOrganizer = true },
+            signatureManager: { viewModel.showSignatureManager = true },
+            merge: { mergePDFs() },
+            split: { splitPDF() },
+            compress: { saveCompressedCopy() },
+            protect: { passwordPrompt = true },
+            flatten: { saveFlattenedCopy() },
+            applyRedactions: { confirmRedactions = true },
+            ocrSearchable: { runOCRSearchable() },
+            ocrText: { runOCRText() },
+            exportDocx: { exportDocx() },
+            exportImages: { exportImages() },
+            exportText: { exportText() },
+            toggleInspector: { showInspector.toggle() },
+            displayMode: { viewModel.pdfView?.displayMode ?? .singlePageContinuous },
+            setDisplayMode: { mode in
+                viewModel.pdfView?.displayMode = mode
+                viewModel.objectWillChange.send()  // refresh ribbon active state
             }
-
-            Button {
-                showInspector.toggle()
-            } label: {
-                Label("Inspector", systemImage: "sidebar.right")
-            }
-        }
+        )
     }
 
     // MARK: - Actions
