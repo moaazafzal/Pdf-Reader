@@ -21,8 +21,9 @@ final class DocViewModel: ObservableObject {
     /// Text prompt state for text-box / note tools.
     @Published var pendingTextRequest: PendingTextRequest?
 
-    /// Edit-text (beta) state: line clicked with the Edit Text tool.
-    @Published var pendingEditTextRequest: EditTextRequest?
+    /// Applies an in-place Edit Text commit: (page, line bounds, new text).
+    /// Set by ContentView so the burn-in gets document-level undo registration.
+    var editTextHandler: ((PDFPage, CGRect, String) -> Void)?
 
     weak var pdfView: PDFView?
 
@@ -52,12 +53,6 @@ final class DocViewModel: ObservableObject {
         var existing: PDFAnnotation?
     }
 
-    struct EditTextRequest: Identifiable {
-        let id = UUID()
-        let page: PDFPage
-        let lineBounds: CGRect
-        let originalText: String
-    }
 
     func runSearch(in document: PDFDocument?) {
         guard let document, !searchText.isEmpty else {

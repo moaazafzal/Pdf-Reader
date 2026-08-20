@@ -27,9 +27,6 @@ struct ContentView: View {
         .sheet(item: $viewModel.pendingTextRequest) { request in
             TextPromptSheet(request: request, viewModel: viewModel)
         }
-        .sheet(item: $viewModel.pendingEditTextRequest) { request in
-            EditTextSheet(request: request, viewModel: viewModel, document: document)
-        }
         .sheet(isPresented: $viewModel.showSignatureManager) {
             SignatureManagerView { image in
                 (viewModel.pdfView as? AnnotatingPDFView)?.pendingStampImage = image
@@ -62,6 +59,24 @@ struct ContentView: View {
             } else if newTool == .signature,
                       (viewModel.pdfView as? AnnotatingPDFView)?.pendingStampImage == nil {
                 viewModel.showSignatureManager = true
+            }
+        }
+        .onAppear {
+            viewModel.editTextHandler = { page, lineRect, newText in
+                let pageIndex = document.pdf.index(for: page)
+                guard pageIndex >= 0 else { return }
+                let before = document.pdf.dataRepresentation()
+                PDFOperations.replaceTextLine(
+                    in: document.pdf,
+                    pageIndex: pageIndex,
+                    lineRect: lineRect,
+                    newText: newText
+                )
+                document.registerContentUndo(undoManager, actionName: "Edit Text", previousData: before)
+                document.objectWillChange.send()
+                viewModel.selectedAnnotation = nil
+                viewModel.pdfView?.setNeedsDisplay(viewModel.pdfView?.bounds ?? .zero)
+                flash("Text replaced — ⌘Z to undo")
             }
         }
     }
@@ -398,54 +413,3 @@ struct TextPromptSheet: View {
     }
 }
 
-// MARK: - Edit text sheet (Edit Text beta tool)
-
-struct EditTextSheet: View {
-    let request: DocViewModel.EditTextRequest
-    @ObservedObject var viewModel: DocViewModel
-    @ObservedObject var document: PDFFileDocument
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.undoManager) private var undoManager
-    @State private var text = ""
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Edit Text (beta)")
-                .font(.headline)
-            Text("Replaces this line by painting over it and writing new text into the page. Works best on plain, light backgrounds.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(width: 360, alignment: .leading)
-            TextField("Text", text: $text)
-                .frame(width: 360)
-            HStack {
-                Spacer()
-                Button("Cancel") { dismiss() }
-                    .keyboardShortcut(.cancelAction)
-                Button("Replace") {
-                    apply()
-                    dismiss()
-                }
-                .keyboardShortcut(.defaultAction)
-            }
-        }
-        .padding(20)
-        .onAppear { text = request.originalText.trimmingCharacters(in: .whitespacesAndNewlines) }
-    }
-
-    private func apply() {
-        let pageIndex = document.pdf.index(for: request.page)
-        guard pageIndex >= 0 else { return }
-        let before = document.pdf.dataRepresentation()
-        PDFOperations.replaceTextLine(
-            in: document.pdf,
-            pageIndex: pageIndex,
-            lineRect: request.lineBounds,
-            newText: text
-        )
-        document.registerContentUndo(undoManager, actionName: "Edit Text", previousData: before)
-        document.objectWillChange.send()
-        viewModel.selectedAnnotation = nil
-        viewModel.pdfView?.setNeedsDisplay(viewModel.pdfView?.bounds ?? .zero)
-    }
-}

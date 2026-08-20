@@ -40,6 +40,10 @@ struct PDFKitView: NSViewRepresentable {
             }
         }
         view.viewModel = viewModel
+        if context.coordinator.lastTool != viewModel.tool {
+            context.coordinator.lastTool = viewModel.tool
+            view.toolDidChange()  // commits any in-place text editor
+        }
         view.setNeedsDisplay(view.bounds)  // keep selection handles in sync
 
         // Markup and drawing tools need our drag handling; select mode keeps native text selection.
@@ -56,6 +60,7 @@ struct PDFKitView: NSViewRepresentable {
     @MainActor
     final class Coordinator: NSObject {
         let viewModel: DocViewModel
+        var lastTool: Tool = .select
         init(viewModel: DocViewModel) { self.viewModel = viewModel }
 
         @objc func pageChanged(_ note: Notification) {

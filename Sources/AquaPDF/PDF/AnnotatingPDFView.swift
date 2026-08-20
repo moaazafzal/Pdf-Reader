@@ -1,6 +1,30 @@
 import AppKit
 import PDFKit
 
+/// Borderless text view used for in-place text editing on the page (Foxit-style).
+final class InlineTextEditor: NSTextView {
+    var onCommit: (() -> Void)?
+    var onCancel: (() -> Void)?
+    /// true: Enter commits (single-line edit). false: Enter inserts newline; ⌘Enter commits.
+    var commitsOnEnter = false
+
+    override func cancelOperation(_ sender: Any?) {
+        onCancel?()
+    }
+
+    override func insertNewline(_ sender: Any?) {
+        if commitsOnEnter { onCommit?() } else { super.insertNewline(sender) }
+    }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.modifierFlags.contains(.command), event.keyCode == 36 {  // ⌘Enter
+            onCommit?()
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+}
+
 /// PDFView subclass that turns mouse drags into annotations depending on the active tool.
 /// All mutations register with the window's undo manager (which also marks the SwiftUI
 /// document dirty so autosave works).
@@ -10,6 +34,26 @@ final class AnnotatingPDFView: PDFView {
 
     /// Image placed by the signature / image-stamp tools.
     var pendingStampImage: NSImage?
+
+    // In-place text editing session
+    private struct TextSession {
+        enum Kind {
+            case add
+            case editLine(original: String)
+        }
+        let kind: Kind
+        let page: PDFPage
+        var pageRect: CGRect
+        let pageFontSize: CGFloat
+    }
+    private var textSession: TextSession?
+    private var inlineEditor: InlineTextEditor?
+    private var scrollObserver: NSObjectProtocol?
+
+    // Hover highlight for the Edit Text tool
+    private var hoverPage: PDFPage?
+    private var hoverRect: CGRect = .null
+    private var hoverTrackingArea: NSTrackingArea?
 
     // In-progress drag state
     private var dragStartPagePoint: CGPoint = .zero
@@ -68,6 +112,12 @@ final class AnnotatingPDFView: PDFView {
     // MARK: - Mouse handling
 
     override func mouseDown(with event: NSEvent) {
+        // Click outside an active in-place editor commits it (Foxit behavior).
+        if inlineEditor != nil {
+            commitInlineEditor()
+            return
+        }
+
         let viewPoint = convert(event.locationInWindow, from: nil)
         guard let page = page(for: viewPoint, nearest: true) else {
             super.mouseDown(with: event)
@@ -92,7 +142,7 @@ final class AnnotatingPDFView: PDFView {
             dragStartPagePoint = pagePoint
 
         case .textBox:
-            viewModel?.pendingTextRequest = .init(page: page, point: pagePoint, kind: .textBox)
+            beginAddText(at: pagePoint, on: page)
 
         case .note:
             viewModel?.pendingTextRequest = .init(page: page, point: pagePoint, kind: .note)
@@ -101,8 +151,63 @@ final class AnnotatingPDFView: PDFView {
             placeStamp(at: pagePoint, on: page)
 
         case .editText:
-            requestTextEdit(at: pagePoint, on: page)
+            beginEditLine(at: pagePoint, on: page)
         }
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        super.mouseMoved(with: event)
+        switch tool {
+        case .editText:
+            NSCursor.iBeam.set()
+            let viewPoint = convert(event.locationInWindow, from: nil)
+            guard let page = page(for: viewPoint, nearest: true) else { return }
+            let pagePoint = convert(viewPoint, to: page)
+            var newRect = CGRect.null
+            if let selection = page.selectionForLine(at: pagePoint),
+               let text = selection.string,
+               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            {
+                let rect = selection.bounds(for: page)
+                if rect.insetBy(dx: -4, dy: -4).contains(pagePoint) { newRect = rect }
+            }
+            if newRect != hoverRect || page !== hoverPage {
+                hoverPage = newRect.isNull ? nil : page
+                hoverRect = newRect
+                setNeedsDisplay(bounds)
+            }
+        case .textBox:
+            NSCursor.iBeam.set()
+            clearHover()
+        default:
+            clearHover()
+        }
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let area = hoverTrackingArea { removeTrackingArea(area) }
+        let area = NSTrackingArea(
+            rect: .zero,
+            options: [.mouseMoved, .activeInKeyWindow, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+        hoverTrackingArea = area
+    }
+
+    private func clearHover() {
+        guard hoverPage != nil || !hoverRect.isNull else { return }
+        hoverPage = nil
+        hoverRect = .null
+        setNeedsDisplay(bounds)
+    }
+
+    /// Called when the active tool changes (from PDFKitView.updateNSView).
+    func toolDidChange() {
+        if inlineEditor != nil { commitInlineEditor() }
+        clearHover()
     }
 
     override func mouseDragged(with event: NSEvent) {
@@ -184,6 +289,20 @@ final class AnnotatingPDFView: PDFView {
 
     override func draw(_ page: PDFPage, to context: CGContext) {
         super.draw(page, to: context)
+
+        // Edit Text hover: outline the line under the cursor so the editable area is visible.
+        if hoverPage === page, !hoverRect.isNull {
+            context.saveGState()
+            context.setStrokeColor(NSColor.controlAccentColor.cgColor)
+            context.setLineWidth(1.5 / max(scaleFactor, 0.1))
+            context.setLineDash(phase: 0, lengths: [3 / max(scaleFactor, 0.1)])
+            context.setFillColor(NSColor.controlAccentColor.withAlphaComponent(0.08).cgColor)
+            let box = hoverRect.insetBy(dx: -3, dy: -3)
+            context.fill(box)
+            context.stroke(box)
+            context.restoreGState()
+        }
+
         guard let selected = viewModel?.selectedAnnotation, selected.page === page else { return }
 
         context.saveGState()
@@ -295,16 +414,137 @@ final class AnnotatingPDFView: PDFView {
         viewModel?.tool = .select  // switch to select so it can be moved/resized immediately
     }
 
-    // MARK: - Edit text (beta)
+    // MARK: - In-place text editing (Add Text / Edit Text)
 
-    private func requestTextEdit(at pagePoint: CGPoint, on page: PDFPage) {
+    private func beginAddText(at pagePoint: CGPoint, on page: PDFPage) {
+        let fontSize = style.fontSize
+        let height = fontSize * 1.7
+        let pageBounds = page.bounds(for: .mediaBox)
+        let width = min(240, pageBounds.maxX - pagePoint.x - 4)
+        guard width > 30 else { return }
+        let rect = CGRect(x: pagePoint.x, y: pagePoint.y - height, width: width, height: height)
+        startSession(TextSession(kind: .add, page: page, pageRect: rect, pageFontSize: fontSize), text: "")
+    }
+
+    private func beginEditLine(at pagePoint: CGPoint, on page: PDFPage) {
         guard let selection = page.selectionForLine(at: pagePoint),
-              let text = selection.string,
-              !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+              let text = selection.string?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !text.isEmpty
         else { return }
         let lineBounds = selection.bounds(for: page)
         guard !lineBounds.isEmpty else { return }
-        viewModel?.pendingEditTextRequest = .init(page: page, lineBounds: lineBounds, originalText: text)
+        clearHover()
+        let session = TextSession(
+            kind: .editLine(original: text),
+            page: page,
+            pageRect: lineBounds,
+            pageFontSize: lineBounds.height * 0.72
+        )
+        startSession(session, text: text)
+    }
+
+    private func startSession(_ session: TextSession, text: String) {
+        commitInlineEditor()
+        textSession = session
+
+        let editor = InlineTextEditor(frame: convert(session.pageRect, from: session.page))
+        editor.string = text
+        editor.isRichText = false
+        editor.drawsBackground = true
+        editor.allowsUndo = true
+        editor.textContainerInset = NSSize(width: 2, height: 2)
+        editor.wantsLayer = true
+        editor.layer?.borderColor = NSColor.controlAccentColor.cgColor
+        editor.layer?.borderWidth = 1.5
+        editor.layer?.cornerRadius = 2
+
+        switch session.kind {
+        case .add:
+            editor.backgroundColor = NSColor.white.withAlphaComponent(0.65)
+            editor.textColor = style.color
+            editor.commitsOnEnter = false
+        case .editLine:
+            editor.backgroundColor = .white
+            editor.textColor = .black
+            editor.commitsOnEnter = true
+        }
+
+        editor.onCommit = { [weak self] in self?.commitInlineEditor() }
+        editor.onCancel = { [weak self] in self?.cancelInlineEditor() }
+
+        addSubview(editor)
+        inlineEditor = editor
+        layoutInlineEditor()
+        window?.makeFirstResponder(editor)
+        editor.setSelectedRange(NSRange(location: text.count, length: 0))
+
+        // Track scroll/zoom so the editor stays glued to the page rect.
+        if let clipView = documentView?.enclosingScrollView?.contentView {
+            clipView.postsBoundsChangedNotifications = true
+            scrollObserver = NotificationCenter.default.addObserver(
+                forName: NSView.boundsDidChangeNotification,
+                object: clipView,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor in self?.layoutInlineEditor() }
+            }
+        }
+    }
+
+    private func layoutInlineEditor() {
+        guard let editor = inlineEditor, let session = textSession else { return }
+        editor.frame = convert(session.pageRect, from: session.page).insetBy(dx: -2, dy: -2)
+        editor.font = .systemFont(ofSize: session.pageFontSize * scaleFactor)
+    }
+
+    private func teardownInlineEditor() {
+        if let observer = scrollObserver {
+            NotificationCenter.default.removeObserver(observer)
+            scrollObserver = nil
+        }
+        inlineEditor?.removeFromSuperview()
+        inlineEditor = nil
+        textSession = nil
+        window?.makeFirstResponder(self)
+    }
+
+    func commitInlineEditor() {
+        guard let editor = inlineEditor, let session = textSession else { return }
+        let text = editor.string
+        teardownInlineEditor()
+
+        switch session.kind {
+        case .add:
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return }
+            let font = NSFont.systemFont(ofSize: session.pageFontSize)
+            let measured = (text as NSString).boundingRect(
+                with: CGSize(width: 520, height: 2000),
+                options: [.usesLineFragmentOrigin],
+                attributes: [.font: font]
+            )
+            let rect = CGRect(
+                x: session.pageRect.minX,
+                y: session.pageRect.maxY - measured.height - 8,
+                width: max(measured.width + 14, 36),
+                height: measured.height + 8
+            )
+            let annotation = PDFAnnotation(bounds: rect, forType: .freeText, withProperties: nil)
+            annotation.contents = text
+            annotation.font = font
+            annotation.fontColor = style.color
+            annotation.color = .clear
+            insert(annotation, on: session.page)
+
+        case .editLine(let original):
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmed != original else { return }
+            viewModel?.editTextHandler?(session.page, session.pageRect, trimmed)
+        }
+    }
+
+    private func cancelInlineEditor() {
+        teardownInlineEditor()
     }
 
     // MARK: - Text markup (highlight / underline / strikeout)
