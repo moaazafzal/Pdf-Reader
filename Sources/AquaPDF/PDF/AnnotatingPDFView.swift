@@ -18,7 +18,8 @@ final class AnnotatingPDFView: PDFView {
         enum Kind {
             case add
             case editLine(original: String)
-            var isEdit: Bool { if case .editLine = self { return true }; return false }
+            case editAnnotation(PDFAnnotation)
+            var isEdit: Bool { if case .add = self { return false }; return true }
         }
         let kind: Kind
         let page: PDFPage
@@ -205,6 +206,11 @@ final class AnnotatingPDFView: PDFView {
 
         switch tool {
         case .select:
+            // Double-click a text annotation to edit it in place.
+            if event.clickCount >= 2, let existing = editableTextAnnotation(at: pagePoint, on: page) {
+                beginEditAnnotation(existing, on: page)
+                return
+            }
             beginSelectDrag(at: pagePoint, on: page, event: event)
 
         case .highlight, .underline, .squiggly, .strikeout:
@@ -242,12 +248,10 @@ final class AnnotatingPDFView: PDFView {
             guard let page = page(for: viewPoint, nearest: true) else { return }
             let pagePoint = convert(viewPoint, to: page)
             var newRect = CGRect.null
-            if let selection = page.selectionForLine(at: pagePoint),
-               let text = selection.string,
-               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            {
-                let rect = selection.bounds(for: page)
-                if rect.insetBy(dx: -4, dy: -4).contains(pagePoint) { newRect = rect }
+            if let existing = editableTextAnnotation(at: pagePoint, on: page) {
+                newRect = existing.bounds
+            } else if let line = page.textLine(at: pagePoint) {
+                newRect = line.rect
             }
             if newRect != hoverRect || page !== hoverPage {
                 hoverPage = newRect.isNull ? nil : page
@@ -507,36 +511,71 @@ final class AnnotatingPDFView: PDFView {
         startSession(TextSession(kind: .add, page: page, pageRect: rect, pageFontSize: fontSize), text: "")
     }
 
-    private func beginEditLine(at pagePoint: CGPoint, on page: PDFPage) {
-        guard let selection = page.selectionForLine(at: pagePoint),
-              let text = selection.string?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !text.isEmpty
-        else { return }
-        let lineBounds = selection.bounds(for: page)
-        guard !lineBounds.isEmpty else { return }
-        clearHover()
-        let session = TextSession(
-            kind: .editLine(original: text),
-            page: page,
-            pageRect: lineBounds,
-            pageFontSize: lineBounds.height * 0.72
-        )
-        startSession(session, text: text)
+    /// A previously added text annotation that can be reopened for editing.
+    func editableTextAnnotation(at pagePoint: CGPoint, on page: PDFPage) -> PDFAnnotation? {
+        page.annotations.first {
+            $0.type == "FreeText" && $0.bounds.insetBy(dx: -2, dy: -2).contains(pagePoint)
+        }
     }
 
-    private func startSession(_ session: TextSession, text: String) {
+    private func beginEditLine(at pagePoint: CGPoint, on page: PDFPage) {
+        // Text this app added stays editable forever — reopen it instead of burning over it.
+        if let existing = editableTextAnnotation(at: pagePoint, on: page) {
+            beginEditAnnotation(existing, on: page)
+            return
+        }
+        guard let line = page.textLine(at: pagePoint) else { return }
+        clearHover()
+        let session = TextSession(
+            kind: .editLine(original: line.text),
+            page: page,
+            pageRect: line.rect,
+            pageFontSize: line.rect.height * 0.82
+        )
+        startSession(session, text: line.text)
+    }
+
+    /// Reopens an existing freeText annotation in the in-place editor.
+    func beginEditAnnotation(_ annotation: PDFAnnotation, on page: PDFPage) {
+        clearHover()
+        let font = annotation.font ?? .systemFont(ofSize: 14)
+        let session = TextSession(
+            kind: .editAnnotation(annotation),
+            page: page,
+            pageRect: annotation.bounds,
+            pageFontSize: font.pointSize
+        )
+        // Hide the original while editing so text is not drawn twice.
+        annotation.shouldDisplay = false
+        setNeedsDisplay(bounds)
+        startSession(session, text: annotation.contents ?? "", font: font, color: annotation.fontColor ?? .black)
+    }
+
+    private func startSession(
+        _ session: TextSession,
+        text: String,
+        font: NSFont? = nil,
+        color: NSColor? = nil
+    ) {
         commitInlineEditor()
         textSession = session
 
-        // Format state seeded from the session (Edit Text matches the line it replaces).
+        // Format state seeded from the session (Edit Text matches the text it replaces).
         let state = TextFormatState()
         state.fontSize = session.pageFontSize
-        switch session.kind {
-        case .add:
+        if let font {
+            state.fontName = font.familyName ?? font.fontName
+            let traits = NSFontManager.shared.traits(of: font)
+            state.bold = traits.contains(.boldFontMask)
+            state.italic = traits.contains(.italicFontMask)
+        } else if case .add = session.kind {
             state.fontName = style.fontName
-            state.color = style.color
-        case .editLine:
-            state.color = .black
+            state.bold = style.bold
+            state.italic = style.italic
+        }
+        switch session.kind {
+        case .add: state.color = color ?? style.textColor
+        default: state.color = color ?? .black
         }
         formatState = state
 
@@ -591,7 +630,7 @@ final class AnnotatingPDFView: PDFView {
             viewModel?.style.fontSize = state.fontSize
             viewModel?.style.bold = state.bold
             viewModel?.style.italic = state.italic
-            viewModel?.style.color = state.color
+            viewModel?.style.textColor = state.color
         }
         layoutInlineEditor()
     }
@@ -667,25 +706,22 @@ final class AnnotatingPDFView: PDFView {
         switch session.kind {
         case .add:
             guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-            // Grow the box downward if the typed text needs more room than it was given.
-            let measured = (text as NSString).boundingRect(
-                with: CGSize(width: session.pageRect.width, height: 4000),
-                options: [.usesLineFragmentOrigin],
-                attributes: [.font: font]
-            )
-            let height = max(session.pageRect.height, measured.height + 6)
-            let rect = CGRect(
-                x: session.pageRect.minX,
-                y: session.pageRect.maxY - height,
-                width: session.pageRect.width,
-                height: height
-            )
-            let annotation = PDFAnnotation(bounds: rect, forType: .freeText, withProperties: nil)
-            annotation.contents = text
-            annotation.font = font
-            annotation.fontColor = color
-            annotation.color = .clear
-            insert(annotation, on: session.page)
+            insert(makeTextAnnotation(text: text, session: session, font: font, color: color), on: session.page)
+
+        case .editAnnotation(let original):
+            original.shouldDisplay = true
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty {
+                remove(original)
+                return
+            }
+            let replacement = makeTextAnnotation(text: text, session: session, font: font, color: color)
+            undoManager?.beginUndoGrouping()
+            remove(original)
+            insert(replacement, on: session.page)
+            undoManager?.endUndoGrouping()
+            undoManager?.setActionName("Edit Text")
+            viewModel?.selectedAnnotation = replacement
 
         case .editLine(let original):
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -694,8 +730,39 @@ final class AnnotatingPDFView: PDFView {
         }
     }
 
+    private func makeTextAnnotation(
+        text: String,
+        session: TextSession,
+        font: NSFont,
+        color: NSColor
+    ) -> PDFAnnotation {
+        // Grow the box downward if the typed text needs more room than it was given.
+        let measured = (text as NSString).boundingRect(
+            with: CGSize(width: session.pageRect.width, height: 4000),
+            options: [.usesLineFragmentOrigin],
+            attributes: [.font: font]
+        )
+        let height = max(session.pageRect.height, measured.height + 6)
+        let rect = CGRect(
+            x: session.pageRect.minX,
+            y: session.pageRect.maxY - height,
+            width: session.pageRect.width,
+            height: height
+        )
+        let annotation = PDFAnnotation(bounds: rect, forType: .freeText, withProperties: nil)
+        annotation.contents = text
+        annotation.font = font
+        annotation.fontColor = color
+        annotation.color = .clear
+        return annotation
+    }
+
     private func cancelInlineEditor() {
+        if case .editAnnotation(let original)? = textSession?.kind {
+            original.shouldDisplay = true
+        }
         teardownInlineEditor()
+        setNeedsDisplay(bounds)
     }
 
     // MARK: - Text markup (highlight / underline / strikeout)

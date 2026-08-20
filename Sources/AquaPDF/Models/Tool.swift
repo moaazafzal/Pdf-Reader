@@ -81,6 +81,8 @@ enum Tool: String, CaseIterable, Identifiable {
 
 struct AnnotationStyle {
     var color: NSColor = .systemYellow
+    /// Text tools default to black; markup keeps its own highlight color.
+    var textColor: NSColor = .black
     var lineWidth: CGFloat = 2
     var opacity: CGFloat = 1
     var fontName: String = "Helvetica"
