@@ -21,10 +21,16 @@ enum PDFOperations {
     }
 
     static func burnImage(_ image: NSImage, in rect: CGRect, pageIndex: Int, in document: PDFDocument) {
-        guard let page = document.page(at: pageIndex),
-              let cgPage = page.pageRef,
-              let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
-        else { return }
+        guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return }
+        rebuildPage(at: pageIndex, in: document) { ctx in
+            ctx.draw(cgImage, in: rect)
+        }
+    }
+
+    /// Replaces `pageIndex` with a rebuilt page: original vector content + custom overlay drawing.
+    /// Existing annotations are moved onto the rebuilt page.
+    static func rebuildPage(at pageIndex: Int, in document: PDFDocument, overlay: (CGContext) -> Void) {
+        guard let page = document.page(at: pageIndex), let cgPage = page.pageRef else { return }
 
         let data = NSMutableData()
         guard let consumer = CGDataConsumer(data: data) else { return }
@@ -33,7 +39,7 @@ enum PDFOperations {
 
         ctx.beginPDFPage(nil)
         ctx.drawPDFPage(cgPage)
-        ctx.draw(cgImage, in: rect)
+        overlay(ctx)
         ctx.endPDFPage()
         ctx.closePDF()
 
@@ -46,6 +52,123 @@ enum PDFOperations {
         document.removePage(at: pageIndex)
         document.insert(newPage, at: pageIndex)
         for a in annotations { newPage.addAnnotation(a) }
+    }
+
+    /// Flattens all interactive `ImageStampAnnotation`s (signatures, placed images)
+    /// into real page content. Called before every save.
+    static func burnImageStamps(in document: PDFDocument) {
+        for i in 0..<document.pageCount {
+            guard let page = document.page(at: i) else { continue }
+            let stamps = page.annotations.compactMap { $0 as? ImageStampAnnotation }
+            for stamp in stamps {
+                page.removeAnnotation(stamp)
+                burnImage(stamp.image, in: stamp.bounds, pageIndex: i, in: document)
+            }
+        }
+    }
+
+    // MARK: - Redaction (true, destructive)
+
+    /// Applies all redaction marks: affected pages are re-rendered to 300 dpi images with
+    /// black boxes, so the text and graphics underneath are REMOVED, not just covered.
+    /// Returns the number of pages redacted.
+    static func applyRedactions(in document: PDFDocument) -> Int {
+        var redactedPages = 0
+        for i in 0..<document.pageCount {
+            guard let page = document.page(at: i), let cgPage = page.pageRef else { continue }
+            let marks = page.annotations.filter { $0.isRedactionMark }
+            guard !marks.isEmpty else { continue }
+            let others = page.annotations.filter { !$0.isRedactionMark }
+
+            let mediaBox = page.bounds(for: .mediaBox)
+            let rotated = page.rotation % 180 != 0
+            let dims = rotated
+                ? CGSize(width: mediaBox.height, height: mediaBox.width)
+                : mediaBox.size
+            let scale: CGFloat = 300 / 72
+
+            guard let bitmap = CGContext(
+                data: nil,
+                width: max(1, Int(dims.width * scale)),
+                height: max(1, Int(dims.height * scale)),
+                bitsPerComponent: 8,
+                bytesPerRow: 0,
+                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ) else { continue }
+
+            bitmap.setFillColor(CGColor(gray: 1, alpha: 1))
+            bitmap.fill(CGRect(origin: .zero, size: CGSize(width: dims.width * scale, height: dims.height * scale)))
+            bitmap.scaleBy(x: scale, y: scale)
+            let transform = cgPage.getDrawingTransform(
+                .mediaBox,
+                rect: CGRect(origin: .zero, size: dims),
+                rotate: 0,
+                preserveAspectRatio: true
+            )
+            bitmap.concatenate(transform)
+            bitmap.drawPDFPage(cgPage)
+
+            // Rotated pages: annotation coordinates would not survive the rebuild — flatten them too.
+            if page.rotation != 0 {
+                for a in others { a.draw(with: .mediaBox, in: bitmap) }
+            }
+
+            bitmap.setFillColor(CGColor(gray: 0, alpha: 1))
+            for mark in marks { bitmap.fill(mark.bounds) }
+
+            guard let cgImage = bitmap.makeImage() else { continue }
+            let image = NSImage(cgImage: cgImage, size: dims)
+            guard let newPage = PDFPage(image: image) else { continue }
+
+            for a in page.annotations { page.removeAnnotation(a) }
+            document.removePage(at: i)
+            document.insert(newPage, at: i)
+            if page.rotation == 0 {
+                for a in others { newPage.addAnnotation(a) }
+            }
+            redactedPages += 1
+        }
+        return redactedPages
+    }
+
+    // MARK: - Edit text (beta)
+
+    /// Replaces one text line: paints the original line over with the page background color
+    /// and burns the replacement text into page content.
+    static func replaceTextLine(
+        in document: PDFDocument,
+        pageIndex: Int,
+        lineRect: CGRect,
+        newText: String,
+        textColor: NSColor = .black,
+        backgroundColor: NSColor = .white
+    ) {
+        rebuildPage(at: pageIndex, in: document) { ctx in
+            ctx.setFillColor(backgroundColor.cgColor)
+            ctx.fill(lineRect.insetBy(dx: -1, dy: -1))
+
+            guard !newText.isEmpty else { return }
+            let fontSize = lineRect.height * 0.72
+            let font = CTFontCreateWithName("Helvetica" as CFString, fontSize, nil)
+            let attributes: [CFString: Any] = [
+                kCTFontAttributeName: font,
+                kCTForegroundColorAttributeName: textColor.cgColor,
+            ]
+            guard let attrString = CFAttributedStringCreate(nil, newText as CFString, attributes as CFDictionary)
+            else { return }
+            let line = CTLineCreateWithAttributedString(attrString)
+            let width = CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil))
+
+            ctx.saveGState()
+            ctx.setTextDrawingMode(.fill)
+            // Shrink horizontally if the new text is wider than the original line box.
+            let fit = width > lineRect.width ? lineRect.width / width : 1
+            ctx.textMatrix = CGAffineTransform(scaleX: fit, y: 1)
+            ctx.textPosition = CGPoint(x: lineRect.origin.x, y: lineRect.origin.y + lineRect.height * 0.22)
+            CTLineDraw(line, ctx)
+            ctx.restoreGState()
+        }
     }
 
     // MARK: - Merge / split / extract

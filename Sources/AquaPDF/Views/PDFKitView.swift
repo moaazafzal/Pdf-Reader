@@ -33,9 +33,14 @@ struct PDFKitView: NSViewRepresentable {
     func updateNSView(_ view: AnnotatingPDFView, context: Context) {
         if view.document !== document {
             view.document = document
+            // Document swapped (e.g. undo of a whole-document operation) — old selection is stale.
+            DispatchQueue.main.async {
+                viewModel.selectedAnnotation = nil
+                viewModel.pageCount = document.pageCount
+            }
         }
         view.viewModel = viewModel
-        viewModel.pageCount = document.pageCount
+        view.setNeedsDisplay(view.bounds)  // keep selection handles in sync
 
         // Markup and drawing tools need our drag handling; select mode keeps native text selection.
         switch viewModel.tool {

@@ -7,7 +7,8 @@ import UniformTypeIdentifiers
 struct PageOrganizerView: View {
     let document: PDFDocument
     @ObservedObject var viewModel: DocViewModel
-    var onChanged: () -> Void
+    /// Called after each mutation with the PDF data captured before it (for undo).
+    var onChanged: (Data?) -> Void
     @Environment(\.dismiss) private var dismiss
 
     @State private var selection: Set<Int> = []
@@ -82,29 +83,32 @@ struct PageOrganizerView: View {
     private func move(_ i: Int, by delta: Int) {
         let j = i + delta
         guard j >= 0, j < document.pageCount, let page = document.page(at: i) else { return }
+        let before = document.dataRepresentation()
         document.removePage(at: i)
         document.insert(page, at: j)
         selection = []
         refresh += 1
-        onChanged()
+        onChanged(before)
     }
 
     private func rotate(_ degrees: Int) {
+        let before = document.dataRepresentation()
         for i in selection {
             guard let page = document.page(at: i) else { continue }
             page.rotation = ((page.rotation + degrees) % 360 + 360) % 360
         }
         refresh += 1
-        onChanged()
+        onChanged(before)
     }
 
     private func deleteSelected() {
+        let before = document.dataRepresentation()
         for i in selection.sorted(by: >) {
             document.removePage(at: i)
         }
         selection = []
         refresh += 1
-        onChanged()
+        onChanged(before)
     }
 
     private func extract() {

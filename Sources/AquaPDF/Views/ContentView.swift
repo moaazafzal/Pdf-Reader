@@ -9,6 +9,7 @@ struct ContentView: View {
     @State private var showInspector = true
     @State private var passwordPrompt = false
     @State private var passwordDraft = ""
+    @State private var confirmRedactions = false
     @State private var busyMessage: String?
     @State private var statusMessage: String?
     @Environment(\.undoManager) private var undoManager
@@ -52,6 +53,9 @@ struct ContentView: View {
         .sheet(item: $viewModel.pendingTextRequest) { request in
             TextPromptSheet(request: request, viewModel: viewModel)
         }
+        .sheet(item: $viewModel.pendingEditTextRequest) { request in
+            EditTextSheet(request: request, viewModel: viewModel, document: document)
+        }
         .sheet(isPresented: $viewModel.showSignatureManager) {
             SignatureManagerView { image in
                 (viewModel.pdfView as? AnnotatingPDFView)?.pendingStampImage = image
@@ -59,10 +63,10 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $viewModel.showOrganizer) {
-            PageOrganizerView(document: document.pdf, viewModel: viewModel) {
+            PageOrganizerView(document: document.pdf, viewModel: viewModel) { before in
+                document.registerContentUndo(undoManager, actionName: "Organize Pages", previousData: before)
                 document.objectWillChange.send()
                 viewModel.pageCount = document.pdf.pageCount
-                undoManager?.removeAllActions()
             }
         }
         .alert("Set Password", isPresented: $passwordPrompt) {
@@ -71,6 +75,12 @@ struct ContentView: View {
             Button("Cancel", role: .cancel) { passwordDraft = "" }
         } message: {
             Text("Saves an encrypted copy of this PDF. The original file is not changed.")
+        }
+        .alert("Apply Redactions?", isPresented: $confirmRedactions) {
+            Button("Apply", role: .destructive) { applyRedactions() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Pages with redaction marks are converted to 300 dpi images with the marked areas removed. Text and graphics under the marks are permanently destroyed and the pages lose selectable text (run OCR afterwards if needed). This cannot be undone.")
         }
         .onChange(of: viewModel.tool) { _, newTool in
             if newTool == .imageStamp {
@@ -131,11 +141,15 @@ struct ContentView: View {
                     Button("Protect With Password…") { passwordPrompt = true }
                     Button("Flatten Annotations & Save Copy…") { saveFlattenedCopy() }
                 }
+                Section("Redaction") {
+                    Button("Apply Redactions…", role: .destructive) { confirmRedactions = true }
+                }
                 Section("OCR (Apple Vision)") {
                     Button("Make Searchable PDF…") { runOCRSearchable() }
                     Button("Export Recognized Text…") { runOCRText() }
                 }
                 Section("Export") {
+                    Button("Export as Word (.docx)…") { exportDocx() }
                     Button("Export Pages as PNG…") { exportImages() }
                     Button("Export Text…") { exportText() }
                 }
@@ -168,7 +182,9 @@ struct ContentView: View {
         panel.allowedContentTypes = [.pdf]
         panel.allowsMultipleSelection = true
         guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
+        let before = document.pdf.dataRepresentation()
         PDFOperations.merge(urls: panel.urls, into: document.pdf)
+        document.registerContentUndo(undoManager, actionName: "Merge PDFs", previousData: before)
         document.objectWillChange.send()
         viewModel.pageCount = document.pdf.pageCount
         flash("Merged \(panel.urls.count) file(s) — \(document.pdf.pageCount) pages total")
@@ -289,6 +305,32 @@ struct ContentView: View {
         }
     }
 
+    private func exportDocx() {
+        let docxType = UTType(filenameExtension: "docx") ?? .data
+        guard let url = savePanel(suggested: baseName() + ".docx", types: [docxType]) else { return }
+        do {
+            try DocxExporter.export(document.pdf, to: url)
+            flash("Word document exported (text-level conversion)")
+        } catch {
+            flash("Export failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func applyRedactions() {
+        let before = document.pdf.dataRepresentation()
+        let n = PDFOperations.applyRedactions(in: document.pdf)
+        if n == 0 {
+            flash("No redaction marks found — use the Redact tool to mark areas first")
+            return
+        }
+        document.registerContentUndo(undoManager, actionName: "Apply Redactions", previousData: before)
+        document.objectWillChange.send()
+        viewModel.selectedAnnotation = nil
+        viewModel.annotationsVersion += 1
+        viewModel.pdfView?.setNeedsDisplay(viewModel.pdfView?.bounds ?? .zero)
+        flash("Redacted \(n) page(s) — content under marks destroyed")
+    }
+
     private func pickStampImage() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.png, .jpeg, .tiff, .heic]
@@ -354,16 +396,76 @@ struct TextPromptSheet: View {
             annotation.font = NSFont.systemFont(ofSize: style.fontSize)
             annotation.fontColor = style.color
             annotation.color = .clear
-            request.page.addAnnotation(annotation)
+            add(annotation)
         case .note:
             let bounds = CGRect(x: request.point.x - 10, y: request.point.y - 10, width: 20, height: 20)
             let annotation = PDFAnnotation(bounds: bounds, forType: .text, withProperties: nil)
             annotation.contents = text
             annotation.color = style.color
             annotation.iconType = .comment
-            request.page.addAnnotation(annotation)
+            add(annotation)
         }
-        viewModel.annotationsVersion += 1
+    }
+
+    private func add(_ annotation: PDFAnnotation) {
+        if let view = viewModel.pdfView as? AnnotatingPDFView {
+            view.insert(annotation, on: request.page)  // undoable
+        } else {
+            request.page.addAnnotation(annotation)
+            viewModel.annotationsVersion += 1
+            viewModel.pdfView?.setNeedsDisplay(viewModel.pdfView?.bounds ?? .zero)
+        }
+    }
+}
+
+// MARK: - Edit text sheet (Edit Text beta tool)
+
+struct EditTextSheet: View {
+    let request: DocViewModel.EditTextRequest
+    @ObservedObject var viewModel: DocViewModel
+    @ObservedObject var document: PDFFileDocument
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.undoManager) private var undoManager
+    @State private var text = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Edit Text (beta)")
+                .font(.headline)
+            Text("Replaces this line by painting over it and writing new text into the page. Works best on plain, light backgrounds.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 360, alignment: .leading)
+            TextField("Text", text: $text)
+                .frame(width: 360)
+            HStack {
+                Spacer()
+                Button("Cancel") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button("Replace") {
+                    apply()
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .onAppear { text = request.originalText.trimmingCharacters(in: .whitespacesAndNewlines) }
+    }
+
+    private func apply() {
+        let pageIndex = document.pdf.index(for: request.page)
+        guard pageIndex >= 0 else { return }
+        let before = document.pdf.dataRepresentation()
+        PDFOperations.replaceTextLine(
+            in: document.pdf,
+            pageIndex: pageIndex,
+            lineRect: request.lineBounds,
+            newText: text
+        )
+        document.registerContentUndo(undoManager, actionName: "Edit Text", previousData: before)
+        document.objectWillChange.send()
+        viewModel.selectedAnnotation = nil
         viewModel.pdfView?.setNeedsDisplay(viewModel.pdfView?.bounds ?? .zero)
     }
 }

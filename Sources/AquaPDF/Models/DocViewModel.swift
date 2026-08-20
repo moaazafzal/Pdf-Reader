@@ -21,6 +21,9 @@ final class DocViewModel: ObservableObject {
     /// Text prompt state for text-box / note tools.
     @Published var pendingTextRequest: PendingTextRequest?
 
+    /// Edit-text (beta) state: line clicked with the Edit Text tool.
+    @Published var pendingEditTextRequest: EditTextRequest?
+
     weak var pdfView: PDFView?
 
     enum SidebarTab: String, CaseIterable, Identifiable {
@@ -49,6 +52,13 @@ final class DocViewModel: ObservableObject {
         var existing: PDFAnnotation?
     }
 
+    struct EditTextRequest: Identifiable {
+        let id = UUID()
+        let page: PDFPage
+        let lineBounds: CGRect
+        let originalText: String
+    }
+
     func runSearch(in document: PDFDocument?) {
         guard let document, !searchText.isEmpty else {
             searchResults = []
@@ -64,10 +74,14 @@ final class DocViewModel: ObservableObject {
     }
 
     func deleteSelectedAnnotation() {
-        guard let annotation = selectedAnnotation, let page = annotation.page else { return }
-        page.removeAnnotation(annotation)
-        selectedAnnotation = nil
-        annotationsVersion += 1
-        pdfView?.setNeedsDisplay(pdfView?.bounds ?? .zero)
+        guard let annotation = selectedAnnotation else { return }
+        if let view = pdfView as? AnnotatingPDFView {
+            view.remove(annotation)  // undoable
+        } else if let page = annotation.page {
+            page.removeAnnotation(annotation)
+            selectedAnnotation = nil
+            annotationsVersion += 1
+            pdfView?.setNeedsDisplay(pdfView?.bounds ?? .zero)
+        }
     }
 }

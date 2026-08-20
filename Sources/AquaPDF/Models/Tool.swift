@@ -15,6 +15,8 @@ enum Tool: String, CaseIterable, Identifiable {
     case note
     case signature
     case imageStamp
+    case redact
+    case editText
 
     var id: String { rawValue }
 
@@ -33,6 +35,8 @@ enum Tool: String, CaseIterable, Identifiable {
         case .note: return "Note"
         case .signature: return "Signature"
         case .imageStamp: return "Image"
+        case .redact: return "Redact"
+        case .editText: return "Edit Text (beta)"
         }
     }
 
@@ -51,6 +55,8 @@ enum Tool: String, CaseIterable, Identifiable {
         case .note: return "note.text"
         case .signature: return "signature"
         case .imageStamp: return "photo"
+        case .redact: return "eye.slash"
+        case .editText: return "character.cursor.ibeam"
         }
     }
 
