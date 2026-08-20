@@ -1,0 +1,478 @@
+{
+  "builtTestProducts" : [
+
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.AquaPDF-arm64-apple-macosx-release.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/sources",
+      "importPath" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/App/AquaPDFApp.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Models/DocViewModel.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Models/PDFFileDocument.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Models/Tool.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Operations/OCRService.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Operations/PDFOperations.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Operations/SignatureStore.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/PDF/AnnotatingPDFView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/ContentView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/InspectorView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/PDFKitView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/PageOrganizerView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/SidebarView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/SignatureViews.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/sources"
+        }
+      ],
+      "isLibrary" : false,
+      "moduleName" : "AquaPDF",
+      "moduleOutputPath" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/Modules/AquaPDF.swiftmodule",
+      "objects" : [
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/AquaPDFApp.swift.o",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/DocViewModel.swift.o",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFFileDocument.swift.o",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/Tool.swift.o",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/OCRService.swift.o",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFOperations.swift.o",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SignatureStore.swift.o",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/AnnotatingPDFView.swift.o",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/ContentView.swift.o",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/InspectorView.swift.o",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFKitView.swift.o",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PageOrganizerView.swift.o",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SidebarView.swift.o",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SignatureViews.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-whole-module-optimization",
+        "-num-threads",
+        "10",
+        "-serialize-diagnostics",
+        "-O",
+        "-j10",
+        "-DSWIFT_PACKAGE",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/ModuleCache",
+        "-parseable-output",
+        "-Xfrontend",
+        "-entry-point-function-name",
+        "-Xfrontend",
+        "AquaPDF_main",
+        "-swift-version",
+        "5",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "aquapdf"
+      ],
+      "outputFileMapPath" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/AquaPDFApp.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/DocViewModel.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFFileDocument.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/Tool.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/OCRService.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFOperations.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SignatureStore.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/AnnotatingPDFView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/ContentView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/InspectorView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFKitView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PageOrganizerView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SidebarView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SignatureViews.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/Modules/AquaPDF.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/App/AquaPDFApp.swift",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Models/DocViewModel.swift",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Models/PDFFileDocument.swift",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Models/Tool.swift",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Operations/OCRService.swift",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Operations/PDFOperations.swift",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Operations/SignatureStore.swift",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/PDF/AnnotatingPDFView.swift",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/ContentView.swift",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/InspectorView.swift",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/PDFKitView.swift",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/PageOrganizerView.swift",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/SidebarView.swift",
+        "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/SignatureViews.swift"
+      ],
+      "tempsPath" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build",
+      "wholeModuleOptimization" : true
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "AquaPDF" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "AquaPDF",
+      "-package-name",
+      "aquapdf",
+      "-c",
+      "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/App/AquaPDFApp.swift",
+      "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Models/DocViewModel.swift",
+      "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Models/PDFFileDocument.swift",
+      "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Models/Tool.swift",
+      "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Operations/OCRService.swift",
+      "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Operations/PDFOperations.swift",
+      "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Operations/SignatureStore.swift",
+      "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/PDF/AnnotatingPDFView.swift",
+      "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/ContentView.swift",
+      "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/InspectorView.swift",
+      "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/PDFKitView.swift",
+      "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/PageOrganizerView.swift",
+      "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/SidebarView.swift",
+      "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/SignatureViews.swift",
+      "-I",
+      "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-whole-module-optimization",
+      "-num-threads",
+      "10",
+      "-serialize-diagnostics",
+      "-O",
+      "-j10",
+      "-DSWIFT_PACKAGE",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/ModuleCache",
+      "-parseable-output",
+      "-Xfrontend",
+      "-entry-point-function-name",
+      "-Xfrontend",
+      "AquaPDF_main",
+      "-swift-version",
+      "5",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "aquapdf",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "AquaPDF" : [
+
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+
+  },
+  "traitConfiguration" : {
+    "default" : {
+
+    }
+  },
+  "writeCommands" : {
+    "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/App/AquaPDFApp.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Models/DocViewModel.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Models/PDFFileDocument.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Models/Tool.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Operations/OCRService.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Operations/PDFOperations.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Operations/SignatureStore.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/PDF/AnnotatingPDFView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/ContentView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/InspectorView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/PDFKitView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/PageOrganizerView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/SidebarView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/SignatureViews.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/sources"
+    },
+    "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/AnnotatingPDFView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/AquaPDFApp.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/ContentView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/DocViewModel.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/InspectorView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/OCRService.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFFileDocument.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFKitView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFOperations.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PageOrganizerView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SidebarView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SignatureStore.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SignatureViews.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/Tool.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.product/Objects.LinkFileList"
+    },
+    "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt"
+    }
+  }
+}

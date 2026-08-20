@@ -1,0 +1,91 @@
+{
+  "": {
+    "dependencies": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/AquaPDF.d",
+    "object": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/AquaPDF.o",
+    "swift-dependencies": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/primary.swiftdeps"
+  },
+  "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/App/AquaPDFApp.swift": {
+    "object": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/AquaPDFApp.swift.o",
+    "swiftmodule": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/AquaPDFApp~partial.swiftmodule",
+    "swift-dependencies": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/AquaPDFApp.swiftdeps",
+    "diagnostics": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/AquaPDFApp.dia"
+  },
+  "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Models/DocViewModel.swift": {
+    "object": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/DocViewModel.swift.o",
+    "swiftmodule": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/DocViewModel~partial.swiftmodule",
+    "swift-dependencies": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/DocViewModel.swiftdeps",
+    "diagnostics": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/DocViewModel.dia"
+  },
+  "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Models/PDFFileDocument.swift": {
+    "object": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFFileDocument.swift.o",
+    "swiftmodule": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFFileDocument~partial.swiftmodule",
+    "swift-dependencies": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFFileDocument.swiftdeps",
+    "diagnostics": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFFileDocument.dia"
+  },
+  "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Models/Tool.swift": {
+    "object": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/Tool.swift.o",
+    "swiftmodule": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/Tool~partial.swiftmodule",
+    "swift-dependencies": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/Tool.swiftdeps",
+    "diagnostics": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/Tool.dia"
+  },
+  "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Operations/OCRService.swift": {
+    "object": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/OCRService.swift.o",
+    "swiftmodule": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/OCRService~partial.swiftmodule",
+    "swift-dependencies": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/OCRService.swiftdeps",
+    "diagnostics": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/OCRService.dia"
+  },
+  "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Operations/PDFOperations.swift": {
+    "object": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFOperations.swift.o",
+    "swiftmodule": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFOperations~partial.swiftmodule",
+    "swift-dependencies": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFOperations.swiftdeps",
+    "diagnostics": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFOperations.dia"
+  },
+  "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Operations/SignatureStore.swift": {
+    "object": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SignatureStore.swift.o",
+    "swiftmodule": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SignatureStore~partial.swiftmodule",
+    "swift-dependencies": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SignatureStore.swiftdeps",
+    "diagnostics": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SignatureStore.dia"
+  },
+  "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/PDF/AnnotatingPDFView.swift": {
+    "object": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/AnnotatingPDFView.swift.o",
+    "swiftmodule": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/AnnotatingPDFView~partial.swiftmodule",
+    "swift-dependencies": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/AnnotatingPDFView.swiftdeps",
+    "diagnostics": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/AnnotatingPDFView.dia"
+  },
+  "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/ContentView.swift": {
+    "object": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/ContentView.swift.o",
+    "swiftmodule": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/ContentView~partial.swiftmodule",
+    "swift-dependencies": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/ContentView.swiftdeps",
+    "diagnostics": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/ContentView.dia"
+  },
+  "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/InspectorView.swift": {
+    "object": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/InspectorView.swift.o",
+    "swiftmodule": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/InspectorView~partial.swiftmodule",
+    "swift-dependencies": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/InspectorView.swiftdeps",
+    "diagnostics": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/InspectorView.dia"
+  },
+  "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/PDFKitView.swift": {
+    "object": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFKitView.swift.o",
+    "swiftmodule": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFKitView~partial.swiftmodule",
+    "swift-dependencies": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFKitView.swiftdeps",
+    "diagnostics": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PDFKitView.dia"
+  },
+  "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/PageOrganizerView.swift": {
+    "object": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PageOrganizerView.swift.o",
+    "swiftmodule": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PageOrganizerView~partial.swiftmodule",
+    "swift-dependencies": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PageOrganizerView.swiftdeps",
+    "diagnostics": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/PageOrganizerView.dia"
+  },
+  "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/SidebarView.swift": {
+    "object": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SidebarView.swift.o",
+    "swiftmodule": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SidebarView~partial.swiftmodule",
+    "swift-dependencies": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SidebarView.swiftdeps",
+    "diagnostics": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SidebarView.dia"
+  },
+  "/Users/moaazafzal/Desktop/Aqua/AquaPDF/Sources/AquaPDF/Views/SignatureViews.swift": {
+    "object": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SignatureViews.swift.o",
+    "swiftmodule": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SignatureViews~partial.swiftmodule",
+    "swift-dependencies": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SignatureViews.swiftdeps",
+    "diagnostics": "/Users/moaazafzal/Desktop/Aqua/AquaPDF/.build/arm64-apple-macosx/release/AquaPDF.build/SignatureViews.dia"
+  }
+}
