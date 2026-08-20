@@ -3,10 +3,24 @@
 Free, native macOS PDF reader and editor with a Foxit-style ribbon interface.
 SwiftUI + Apple PDFKit — no paid SDKs, no subscriptions, no accounts.
 
+## Install
+
+Download `AquaPDF-<version>.dmg`, open it, and drag AquaPDF onto the Applications folder.
+
+**On first launch, right-click (or Control-click) AquaPDF and choose "Open"**, then click
+"Open" in the dialog. This is needed only once. The app is signed ad-hoc rather than with a
+paid Apple Developer certificate, so macOS blocks a plain double-click the first time.
+If macOS claims the app "is damaged", clear the download quarantine flag:
+
+```bash
+xattr -cr /Applications/AquaPDF.app
+```
+
 ## Build & Run
 
 ```bash
-./make-app.sh
+./make-app.sh          # universal .app in build/
+./make-dmg.sh          # universal .app + build/AquaPDF-<version>.dmg
 open build/AquaPDF.app
 ```
 
