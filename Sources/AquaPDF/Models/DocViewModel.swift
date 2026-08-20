@@ -16,12 +16,42 @@ final class DocViewModel: ObservableObject {
     @Published var sidebarTab: SidebarTab = .pages
     @Published var showOrganizer = false
     @Published var showSignatureManager = false
+    @Published var showStamps = false
+    @Published var showPreferences = false
+    @Published var showProperties = false
+    @Published var showLoupe = false
+    @Published var showSidebar = true
+    @Published var splitMode: SplitMode = .none
+
+    enum ReadingMode { case normal, reflow, textViewer, read }
+    @Published var readingMode: ReadingMode = .normal
+
+    enum SplitMode: String, CaseIterable, Identifiable {
+        case none = "No Split"
+        case vertical = "Vertical"
+        case horizontal = "Horizontal"
+        var id: String { rawValue }
+        var systemImage: String {
+            switch self {
+            case .none: return "rectangle"
+            case .vertical: return "rectangle.split.2x1"
+            case .horizontal: return "rectangle.split.1x2"
+            }
+        }
+    }
     @Published var annotationsVersion: Int = 0  // bump to refresh annotation list
     @Published var isAutoScrolling = false
+    @Published var reverseView = false
+    @Published var highlightFormFields = false
     @Published var visualMode: AnnotatingPDFView.VisualMode = .standard {
         didSet { (pdfView as? AnnotatingPDFView)?.visualMode = visualMode }
     }
     let speech = ReadOutLoud()
+    @Published var measureScale = MeasureScale()
+    @Published var copyMarkedTextIntoNote = true
+
+    /// Identity used as the author of comments and replies (Foxit: Preferences ▸ Identity).
+    @AppStorage("authorName") var authorName: String = NSFullUserName()
 
     /// Text prompt state for text-box / note tools.
     @Published var pendingTextRequest: PendingTextRequest?
@@ -37,8 +67,10 @@ final class DocViewModel: ObservableObject {
 
     enum SidebarTab: String, CaseIterable, Identifiable {
         case pages = "Pages"
-        case outline = "Outline"
-        case annotations = "Annotations"
+        case outline = "Bookmarks"
+        case annotations = "Comments"
+        case attachments = "Attachments"
+        case signatures = "Signatures"
         case search = "Search"
         var id: String { rawValue }
         var systemImage: String {
@@ -46,6 +78,8 @@ final class DocViewModel: ObservableObject {
             case .pages: return "square.grid.2x2"
             case .outline: return "list.bullet.indent"
             case .annotations: return "text.bubble"
+            case .attachments: return "paperclip"
+            case .signatures: return "signature"
             case .search: return "magnifyingglass"
             }
         }

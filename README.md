@@ -1,6 +1,7 @@
 # AquaPDF
 
-Free, native macOS PDF reader and editor. SwiftUI + Apple PDFKit — no paid SDKs, no subscriptions.
+Free, native macOS PDF reader and editor with a Foxit-style ribbon interface.
+SwiftUI + Apple PDFKit — no paid SDKs, no subscriptions, no accounts.
 
 ## Build & Run
 
@@ -9,72 +10,94 @@ Free, native macOS PDF reader and editor. SwiftUI + Apple PDFKit — no paid SDK
 open build/AquaPDF.app
 ```
 
-Requires Xcode (or Command Line Tools with Swift 6+) and macOS 14+.
+Requires Xcode (or Command Line Tools with Swift 6+) and macOS 15+.
+For development: `swift build && swift run`.
 
-For development: `swift build && swift run` from the project root.
+## Interface
 
-## Features (v0.2)
+- **Start dashboard** at launch: quick actions plus a recent-files grid with page thumbnails
+- **Ribbon** with File, Home, Comment, Edit, Organize, Convert, Form, Protect, View and Help tabs
+- **Command search** (⌥Q) finds any command by name, like Foxit's Alt+Q
+- **Navigation pane**: Pages, Bookmarks, Comments, Attachments, Signatures, Search
+- **Status bar**: first/previous/next/last page, previous/next view, zoom slider and percentage
+- Light / Dark / System theme, and Default / Night / Sepia / Eye Comfort visual modes
+
+## Features
 
 **Viewing**
-- Open/save PDFs with native document handling (recents, autosave, native macOS window tabs)
-- Continuous scrolling, zoom, page indicator
-- Sidebar: page thumbnails, outline (table of contents), annotation list, full-document search with context snippets
+- Single, Continuous, Facing and Continuous Facing layouts; view rotation; reverse page order
+- Zoom in/out, Actual Size, Fit Page, Fit Width, marquee zoom, zoom slider
+- Reflow (single-column reading), Text Viewer, Read Mode, Full Screen
+- Split view (vertical or horizontal), Loupe magnifier, AutoScroll
+- Read Out Loud (this page, from here, pause, stop) via AVSpeechSynthesizer
+- Word count, full-document search with context snippets
 
-**Annotation** (toolbar tool picker)
-- Highlight / underline / strikeout — drag over text
-- Freehand draw (ink), rectangle, ellipse, line, arrow
-- Text box (typewriter) and sticky notes
-- Select tool: click to select, drag to move, corner handles to resize (stamps, rectangles, ellipses, text boxes); edit color/note in the inspector; Delete key removes
-- Full undo/redo (⌘Z / ⇧⌘Z) for annotations, moves, resizes, merges, page organization, redaction, and text edits
-- Form filling: AcroForm fields work natively — click and type
+**Comment**
+- Text markup: Highlight, Underline, Squiggly, Strikeout, Replace Text, Insert Text, Area Highlight
+- Notes, file attachments, text boxes, callouts with leader lines
+- Drawing: Pencil, Eraser, Rectangle, Oval, Line, Arrow, Polygon, Polyline, Cloud, Arc
+- Stamps palette: standard stamps, Sign Here stamps, dynamic stamps, stamps from clipboard or file
+- Measure: Distance, Perimeter, Polygon Area, Circle Area, with unit selection
+- Search & Highlight marks every occurrence of a phrase
+- Comments panel: search, sort (page/type/author/date/status), filter by status, checkmarks,
+  threaded replies, and review states (Accepted, Rejected, Cancelled, Completed)
+- Import/export comments as XFDF or FDF; export highlighted text as CSV or TXT
+- Summarize Comments builds a standalone summary PDF
 
-**Signatures & images**
-- Draw a signature (saved for reuse), click to place, then move/resize freely
-- On save they are burned into real page content, so they survive in every PDF reader
-- Insert any image the same way
+**Edit**
+- Edit Text: click any line to replace it in place (hover highlights the editable line)
+- Add Text: click to place a draggable, resizable text box with a floating format bar
+  (font, size, bold, italic, color) — re-editable at any time, even after saving and reopening
+- Insert images and drawn signatures; move and resize them, burned into page content on save
+- Full undo/redo for every operation
 
-**Edit Text (beta)**
-- Click a line of text with the Edit Text tool, type the replacement — the original line is painted over and the new text is written into the page content
-- Works best on plain, light backgrounds; full content-stream editing (mixed fonts/colors, reflow) remains on the roadmap
+**Organize**
+- Reorder, rotate, delete and extract pages; merge PDFs; split into single pages
 
-**Redaction (true)**
-- Mark areas with the Redact tool, then Tools ▸ Apply Redactions
-- Marked pages are re-rendered as 300 dpi images with the areas removed — text/graphics underneath are permanently destroyed, not just covered
-- Redacted pages lose selectable text: run OCR ▸ Make Searchable PDF afterwards if needed
+**Convert**
+- Export to Word (.docx), PNG images, or plain text
+- OCR via Apple Vision: searchable PDF with an invisible text layer, or recognized text
+- Compress (recompresses embedded images)
 
-**Page organization** (Organize Pages toolbar button)
-- Reorder (arrow buttons), rotate, delete, extract selection to a new PDF
+**Form**
+- Fill AcroForm fields; reset form; highlight fields
+- Import/export field data as FDF; export to CSV (append to an existing sheet supported)
 
-**Document tools** (Tools menu in toolbar)
-- Merge PDFs into current document
-- Split into single-page PDFs
-- Save compressed copy (recompresses images)
-- Password-protect a copy (AES encryption via PDFKit)
-- Flatten annotations into a copy
-- OCR via Apple Vision: produce a searchable PDF (invisible text layer over scanned pages) or export recognized text
-- Export as Word (.docx, text-level), pages as PNG, document text
+**Protect**
+- True redaction: mark areas, then apply — marked pages are re-rendered with the content
+  destroyed, not merely covered
+- Password protection (AES via PDFKit), annotation flattening
+- Action Inspector warns about JavaScript, launch, submit and embedded-file actions
 
-## Known limitations (roadmap)
+**File**
+- Open, Save, Save As, Print, Batch Print, Email, Document Properties
+  (description, security, fonts), Preferences
 
-- **Edit Text is beta**: single-line replacement drawn in Helvetica over a painted background — it does not match original fonts or reflow paragraphs (full content-stream editing is the phase-3 goal)
-- Word export is text-level: paragraphs and page breaks, no images/tables/layout
-- Redaction rasterizes affected pages (by design — that is what guarantees removal), so those pages lose vector text/graphics
-- Line/arrow/ink annotations can be moved but not resized
+## Known limitations
+
+- Edit Text on original PDF content repaints the line in the chosen font rather than matching the
+  original font metrics — best on plain, light backgrounds. Text you add is a real annotation and
+  re-edits cleanly.
+- Word export is text-level: paragraphs and page breaks, no images, tables or layout.
+- Redaction rasterizes affected pages by design; run OCR afterwards to restore searchable text.
+- Not implemented (service- or platform-dependent in Foxit): eSign, DocuSign, Microsoft AIP and
+  Double Key Encryption, SharePoint/Evernote/OneNote connectors, shared-review servers, AI
+  Assistant, 3D PDF, XFA forms, PDF portfolios.
 
 ## Architecture
 
 ```
 Sources/AquaPDF/
-  App/AquaPDFApp.swift          DocumentGroup entry point
-  Models/PDFFileDocument.swift  ReferenceFileDocument wrapping PDFDocument
-  Models/DocViewModel.swift     Per-window UI state (tool, selection, search)
-  Models/Tool.swift             Tool + style definitions
-  PDF/AnnotatingPDFView.swift   PDFView subclass: tools, undo, move/resize handles
-  PDF/ImageStampAnnotation.swift  Interactive image/signature annotation (burned on save)
-  Views/                        SwiftUI: content, sidebar, inspector, organizer, signatures
-  Operations/PDFOperations.swift  Merge/split/extract/compress/protect/redact/edit-text/burn-in
-  Operations/OCRService.swift     Vision OCR + searchable-PDF generation
-  Operations/DocxExporter.swift   Word export (minimal OOXML + zip writer)
-  Operations/SignatureStore.swift Signature persistence (Application Support)
-  Resources/AppIcon.icns          App icon (generated)
+  App/AquaPDFApp.swift            Start window + DocumentGroup
+  Models/PDFFileDocument.swift    ReferenceFileDocument wrapping PDFDocument, undo snapshots
+  Models/DocViewModel.swift       Per-window UI state
+  Models/Tool.swift               Tool set, annotation style, measurement scale
+  Models/CommentMeta.swift        Review status/replies stored on the annotation
+  PDF/AnnotatingPDFView.swift     PDFView subclass: all tools, undo, handles, in-place editing
+  PDF/ShapeAnnotations.swift      Polygon/polyline/cloud/arc, measurements, callouts
+  PDF/InlineTextBox.swift         Draggable, resizable in-place text editor
+  PDF/ImageStampAnnotation.swift  Interactive image/signature annotation
+  PDF/PDFPage+TextLine.swift      Reliable line-at-point finder built on glyph bounds
+  Views/                          Ribbon, sidebar, comments panel, reading views, dialogs
+  Operations/                     Page ops, OCR, DOCX, comment exchange, forms, signatures
 ```

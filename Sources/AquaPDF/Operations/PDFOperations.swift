@@ -172,6 +172,28 @@ enum PDFOperations {
         }
     }
 
+    /// Renders a page-space rectangle to an image (SnapShot, loupe, magnifier).
+    static func renderRegion(_ rect: CGRect, of page: PDFPage, scale: CGFloat = 2) -> NSImage? {
+        guard rect.width > 0, rect.height > 0 else { return nil }
+        let pageBounds = page.bounds(for: .mediaBox)
+        let fullSize = CGSize(width: pageBounds.width * scale, height: pageBounds.height * scale)
+        let full = page.thumbnail(of: fullSize, for: .mediaBox)
+
+        let pixelSize = CGSize(width: rect.width * scale, height: rect.height * scale)
+        let crop = NSImage(size: pixelSize)
+        crop.lockFocus()
+        // Page space and NSImage space are both bottom-left origin.
+        let source = NSRect(
+            x: (rect.minX - pageBounds.minX) * scale,
+            y: (rect.minY - pageBounds.minY) * scale,
+            width: pixelSize.width,
+            height: pixelSize.height
+        )
+        full.draw(in: NSRect(origin: .zero, size: pixelSize), from: source, operation: .copy, fraction: 1)
+        crop.unlockFocus()
+        return crop
+    }
+
     // MARK: - Merge / split / extract
 
     static func merge(urls: [URL], into document: PDFDocument) {

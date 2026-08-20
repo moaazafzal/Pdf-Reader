@@ -24,9 +24,102 @@ struct SidebarView: View {
             case .outline:
                 OutlineListView(document: document, viewModel: viewModel)
             case .annotations:
-                AnnotationListView(document: document, viewModel: viewModel)
+                CommentsPanelView(document: document, viewModel: viewModel)
+            case .attachments:
+                AttachmentsListView(document: document, viewModel: viewModel)
+            case .signatures:
+                SignaturesListView(document: document, viewModel: viewModel)
             case .search:
                 SearchListView(document: document, viewModel: viewModel)
+            }
+        }
+    }
+}
+
+// MARK: - Attachments
+
+struct AttachmentsListView: View {
+    let document: PDFDocument
+    @ObservedObject var viewModel: DocViewModel
+
+    var body: some View {
+        let _ = viewModel.annotationsVersion
+        let items: [(annotation: PDFAnnotation, page: Int)] = (0..<document.pageCount).flatMap { i -> [(PDFAnnotation, Int)] in
+            guard let page = document.page(at: i) else { return [] }
+            return page.annotations
+                .filter { $0.userName == "AquaPDF.attachment" }
+                .map { ($0, i) }
+        }
+
+        if items.isEmpty {
+            ContentUnavailableView(
+                "No Attachments",
+                systemImage: "paperclip",
+                description: Text("Use Comment ▸ File to attach a file to a page.")
+            )
+        } else {
+            List(items.indices, id: \.self) { index in
+                let item = items[index]
+                let lines = (item.annotation.contents ?? "").components(separatedBy: "\n")
+                Button {
+                    if lines.count > 1 {
+                        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: lines[1])])
+                    }
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(lines.first ?? "Attachment")
+                            .font(.callout)
+                            .lineLimit(1)
+                        Text("Page \(item.page + 1)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+// MARK: - Digital signatures
+
+struct SignaturesListView: View {
+    let document: PDFDocument
+    @ObservedObject var viewModel: DocViewModel
+
+    var body: some View {
+        let fields: [(annotation: PDFAnnotation, page: Int)] = (0..<document.pageCount).flatMap { i -> [(PDFAnnotation, Int)] in
+            guard let page = document.page(at: i) else { return [] }
+            return page.annotations
+                .filter { $0.isWidget && $0.widgetFieldType == .signature }
+                .map { ($0, i) }
+        }
+
+        if fields.isEmpty {
+            ContentUnavailableView(
+                "No Digital Signatures",
+                systemImage: "signature",
+                description: Text("This document contains no signature fields.")
+            )
+        } else {
+            List(fields.indices, id: \.self) { index in
+                let field = fields[index]
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(field.annotation.fieldName ?? "Signature field")
+                        .font(.callout)
+                    Text("Page \(field.page + 1)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if let page = field.annotation.page {
+                        viewModel.pdfView?.go(to: PDFDestination(page: page, at: CGPoint(
+                            x: field.annotation.bounds.midX,
+                            y: field.annotation.bounds.maxY
+                        )))
+                    }
+                }
             }
         }
     }
