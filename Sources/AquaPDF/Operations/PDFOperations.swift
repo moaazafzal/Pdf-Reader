@@ -141,6 +141,7 @@ enum PDFOperations {
         pageIndex: Int,
         lineRect: CGRect,
         newText: String,
+        font textFont: NSFont? = nil,
         textColor: NSColor = .black,
         backgroundColor: NSColor = .white
     ) {
@@ -149,8 +150,8 @@ enum PDFOperations {
             ctx.fill(lineRect.insetBy(dx: -1, dy: -1))
 
             guard !newText.isEmpty else { return }
-            let fontSize = lineRect.height * 0.72
-            let font = CTFontCreateWithName("Helvetica" as CFString, fontSize, nil)
+            let font = textFont ?? NSFont(name: "Helvetica", size: lineRect.height * 0.72)
+                ?? .systemFont(ofSize: lineRect.height * 0.72)
             let attributes: [CFString: Any] = [
                 kCTFontAttributeName: font,
                 kCTForegroundColorAttributeName: textColor.cgColor,

@@ -17,13 +17,21 @@ final class DocViewModel: ObservableObject {
     @Published var showOrganizer = false
     @Published var showSignatureManager = false
     @Published var annotationsVersion: Int = 0  // bump to refresh annotation list
+    @Published var isAutoScrolling = false
+    @Published var visualMode: AnnotatingPDFView.VisualMode = .standard {
+        didSet { (pdfView as? AnnotatingPDFView)?.visualMode = visualMode }
+    }
+    let speech = ReadOutLoud()
 
     /// Text prompt state for text-box / note tools.
     @Published var pendingTextRequest: PendingTextRequest?
 
-    /// Applies an in-place Edit Text commit: (page, line bounds, new text).
+    /// Applies an in-place Edit Text commit: (page, line bounds, new text, font, color).
     /// Set by ContentView so the burn-in gets document-level undo registration.
-    var editTextHandler: ((PDFPage, CGRect, String) -> Void)?
+    var editTextHandler: ((PDFPage, CGRect, String, NSFont, NSColor) -> Void)?
+
+    /// Shows a transient status message (set by ContentView).
+    var flashHandler: ((String) -> Void)?
 
     weak var pdfView: PDFView?
 

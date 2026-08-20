@@ -1,29 +1,7 @@
 import AppKit
+import Combine
 import PDFKit
-
-/// Borderless text view used for in-place text editing on the page (Foxit-style).
-final class InlineTextEditor: NSTextView {
-    var onCommit: (() -> Void)?
-    var onCancel: (() -> Void)?
-    /// true: Enter commits (single-line edit). false: Enter inserts newline; ⌘Enter commits.
-    var commitsOnEnter = false
-
-    override func cancelOperation(_ sender: Any?) {
-        onCancel?()
-    }
-
-    override func insertNewline(_ sender: Any?) {
-        if commitsOnEnter { onCommit?() } else { super.insertNewline(sender) }
-    }
-
-    override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        if event.modifierFlags.contains(.command), event.keyCode == 36 {  // ⌘Enter
-            onCommit?()
-            return true
-        }
-        return super.performKeyEquivalent(with: event)
-    }
-}
+import SwiftUI
 
 /// PDFView subclass that turns mouse drags into annotations depending on the active tool.
 /// All mutations register with the window's undo manager (which also marks the SwiftUI
@@ -40,20 +18,120 @@ final class AnnotatingPDFView: PDFView {
         enum Kind {
             case add
             case editLine(original: String)
+            var isEdit: Bool { if case .editLine = self { return true }; return false }
         }
         let kind: Kind
         let page: PDFPage
         var pageRect: CGRect
-        let pageFontSize: CGFloat
+        var pageFontSize: CGFloat
     }
     private var textSession: TextSession?
-    private var inlineEditor: InlineTextEditor?
+    private var inlineBox: InlineTextBox?
+    private var formatBarHost: NSHostingView<TextFormatBar>?
+    private var formatState: TextFormatState?
+    private var formatCancellable: AnyCancellable?
     private var scrollObserver: NSObjectProtocol?
+    private var inlineEditor: InlineTextEditor? { inlineBox?.editor }
 
     // Hover highlight for the Edit Text tool
     private var hoverPage: PDFPage?
     private var hoverRect: CGRect = .null
     private var hoverTrackingArea: NSTrackingArea?
+
+    // MARK: - Visual mode (Default / Night / Sepia / Eye Comfort)
+
+    enum VisualMode: String, CaseIterable, Identifiable {
+        case standard = "Default"
+        case night = "Night"
+        case sepia = "Sepia"
+        case eyeComfort = "Eye Comfort"
+        var id: String { rawValue }
+        var systemImage: String {
+            switch self {
+            case .standard: return "sun.max"
+            case .night: return "moon"
+            case .sepia: return "book.closed"
+            case .eyeComfort: return "eye"
+            }
+        }
+    }
+
+    var visualMode: VisualMode = .standard {
+        didSet { applyVisualMode() }
+    }
+
+    private func applyVisualMode() {
+        guard let documentView else { return }
+        documentView.wantsLayer = true
+        switch visualMode {
+        case .standard:
+            documentView.layer?.filters = nil
+            backgroundColor = .underPageBackgroundColor
+        case .night:
+            let invert = CIFilter(name: "CIColorInvert")!
+            let hue = CIFilter(name: "CIHueAdjust")!
+            hue.setValue(Float.pi, forKey: kCIInputAngleKey)
+            documentView.layer?.filters = [invert, hue]
+            backgroundColor = .black
+        case .sepia:
+            let sepia = CIFilter(name: "CISepiaTone")!
+            sepia.setValue(0.75, forKey: kCIInputIntensityKey)
+            documentView.layer?.filters = [sepia]
+            backgroundColor = NSColor(calibratedRed: 0.36, green: 0.30, blue: 0.22, alpha: 1)
+        case .eyeComfort:
+            let warm = CIFilter(name: "CISepiaTone")!
+            warm.setValue(0.28, forKey: kCIInputIntensityKey)
+            documentView.layer?.filters = [warm]
+            backgroundColor = NSColor(calibratedRed: 0.30, green: 0.32, blue: 0.26, alpha: 1)
+        }
+        setNeedsDisplay(bounds)
+    }
+
+    // MARK: - AutoScroll
+
+    private var autoScrollTimer: Timer?
+    private(set) var isAutoScrolling = false
+    /// Points per tick; negative scrolls backwards.
+    var autoScrollSpeed: CGFloat = 1.4
+
+    func toggleAutoScroll() {
+        isAutoScrolling ? stopAutoScroll() : startAutoScroll()
+    }
+
+    func startAutoScroll() {
+        stopAutoScroll()
+        isAutoScrolling = true
+        let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.autoScrollTick() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        autoScrollTimer = timer
+    }
+
+    func stopAutoScroll() {
+        autoScrollTimer?.invalidate()
+        autoScrollTimer = nil
+        isAutoScrolling = false
+    }
+
+    private func autoScrollTick() {
+        guard let clipView = documentView?.enclosingScrollView?.contentView,
+              let docHeight = documentView?.frame.height
+        else { return stopAutoScroll() }
+        var origin = clipView.bounds.origin
+        origin.y += autoScrollSpeed
+        let maxY = docHeight - clipView.bounds.height
+        guard maxY > 0 else { return stopAutoScroll() }
+        if origin.y >= maxY {
+            origin.y = maxY
+            clipView.scroll(to: origin)
+            documentView?.enclosingScrollView?.reflectScrolledClipView(clipView)
+            stopAutoScroll()
+            return
+        }
+        clipView.scroll(to: origin)
+        documentView?.enclosingScrollView?.reflectScrolledClipView(clipView)
+    }
 
     // In-progress drag state
     private var dragStartPagePoint: CGPoint = .zero
@@ -129,7 +207,7 @@ final class AnnotatingPDFView: PDFView {
         case .select:
             beginSelectDrag(at: pagePoint, on: page, event: event)
 
-        case .highlight, .underline, .strikeout:
+        case .highlight, .underline, .squiggly, .strikeout:
             // Let PDFView run its normal text-selection drag; markup applied on mouseUp.
             super.mouseDown(with: event)
 
@@ -137,7 +215,7 @@ final class AnnotatingPDFView: PDFView {
             dragPage = page
             inkPoints = [pagePoint]
 
-        case .rectangle, .ellipse, .line, .arrow, .redact:
+        case .rectangle, .ellipse, .line, .arrow, .redact, .areaHighlight, .snapshot:
             dragPage = page
             dragStartPagePoint = pagePoint
 
@@ -226,7 +304,7 @@ final class AnnotatingPDFView: PDFView {
             inkPoints.append(convert(viewPoint, to: page))
             updateInkPreview(on: page)
 
-        case .rectangle, .ellipse, .line, .arrow, .redact:
+        case .rectangle, .ellipse, .line, .arrow, .redact, .areaHighlight, .snapshot:
             guard let page = dragPage else { return }
             updateShapePreview(to: convert(viewPoint, to: page), on: page)
 
@@ -243,14 +321,17 @@ final class AnnotatingPDFView: PDFView {
             selectDrag = .none
             dragPage = nil
 
-        case .highlight, .underline, .strikeout:
+        case .highlight, .underline, .squiggly, .strikeout:
             super.mouseUp(with: event)
             applyMarkup()
 
         case .ink:
             finishInk()
 
-        case .rectangle, .ellipse, .line, .arrow, .redact:
+        case .snapshot:
+            finishSnapshot(with: event)
+
+        case .rectangle, .ellipse, .line, .arrow, .redact, .areaHighlight:
             finishShape(with: event)
 
         default:
@@ -447,36 +528,43 @@ final class AnnotatingPDFView: PDFView {
         commitInlineEditor()
         textSession = session
 
-        let editor = InlineTextEditor(frame: convert(session.pageRect, from: session.page))
-        editor.string = text
-        editor.isRichText = false
-        editor.drawsBackground = true
-        editor.allowsUndo = true
-        editor.textContainerInset = NSSize(width: 2, height: 2)
-        editor.wantsLayer = true
-        editor.layer?.borderColor = NSColor.controlAccentColor.cgColor
-        editor.layer?.borderWidth = 1.5
-        editor.layer?.cornerRadius = 2
-
+        // Format state seeded from the session (Edit Text matches the line it replaces).
+        let state = TextFormatState()
+        state.fontSize = session.pageFontSize
         switch session.kind {
         case .add:
-            editor.backgroundColor = NSColor.white.withAlphaComponent(0.65)
-            editor.textColor = style.color
-            editor.commitsOnEnter = false
+            state.fontName = style.fontName
+            state.color = style.color
         case .editLine:
-            editor.backgroundColor = .white
-            editor.textColor = .black
-            editor.commitsOnEnter = true
+            state.color = .black
+        }
+        formatState = state
+
+        let box = InlineTextBox(frame: .zero)
+        box.editor.string = text
+        box.editor.commitsOnEnter = false  // Enter adds a line; ⌘Enter or click-away commits
+        box.editor.backgroundColor = session.kind.isEdit ? .white : NSColor.white.withAlphaComponent(0.7)
+        box.editor.onCommit = { [weak self] in self?.commitInlineEditor() }
+        box.editor.onCancel = { [weak self] in self?.cancelInlineEditor() }
+        box.onMove = { [weak self] delta in self?.moveSession(by: delta) }
+        box.onResize = { [weak self] delta in self?.resizeSession(by: delta) }
+
+        addSubview(box)
+        inlineBox = box
+
+        // Floating format bar above the box.
+        let host = NSHostingView(rootView: TextFormatBar(state: state))
+        addSubview(host)
+        formatBarHost = host
+
+        applyFormatting()
+        formatCancellable = state.objectWillChange.sink { [weak self] _ in
+            Task { @MainActor in self?.applyFormatting() }
         }
 
-        editor.onCommit = { [weak self] in self?.commitInlineEditor() }
-        editor.onCancel = { [weak self] in self?.cancelInlineEditor() }
-
-        addSubview(editor)
-        inlineEditor = editor
         layoutInlineEditor()
-        window?.makeFirstResponder(editor)
-        editor.setSelectedRange(NSRange(location: text.count, length: 0))
+        window?.makeFirstResponder(box.editor)
+        box.editor.setSelectedRange(NSRange(location: text.count, length: 0))
 
         // Track scroll/zoom so the editor stays glued to the page rect.
         if let clipView = documentView?.enclosingScrollView?.contentView {
@@ -491,10 +579,66 @@ final class AnnotatingPDFView: PDFView {
         }
     }
 
+    /// Pushes the format bar's font/size/color into the live editor.
+    private func applyFormatting() {
+        guard let state = formatState, let editor = inlineEditor else { return }
+        textSession?.pageFontSize = state.fontSize
+        editor.font = state.font(at: state.fontSize * scaleFactor)
+        editor.textColor = state.color
+        // Remember the choices as the defaults for the next text box.
+        if let session = textSession, !session.kind.isEdit {
+            viewModel?.style.fontName = state.fontName
+            viewModel?.style.fontSize = state.fontSize
+            viewModel?.style.bold = state.bold
+            viewModel?.style.italic = state.italic
+            viewModel?.style.color = state.color
+        }
+        layoutInlineEditor()
+    }
+
+    private func moveSession(by delta: CGSize) {
+        guard var session = textSession else { return }
+        let pageDelta = CGSize(width: delta.width / scaleFactor, height: delta.height / scaleFactor)
+        var rect = session.pageRect
+        rect.origin.x += pageDelta.width
+        rect.origin.y += pageDelta.height
+        // Keep the box on the page.
+        let limits = session.page.bounds(for: .mediaBox)
+        rect.origin.x = min(max(limits.minX - rect.width / 2, rect.origin.x), limits.maxX - rect.width / 2)
+        rect.origin.y = min(max(limits.minY - rect.height / 2, rect.origin.y), limits.maxY - rect.height / 2)
+        session.pageRect = rect
+        textSession = session
+        layoutInlineEditor()
+    }
+
+    private func resizeSession(by delta: CGSize) {
+        guard var session = textSession else { return }
+        let pageDelta = CGSize(width: delta.width / scaleFactor, height: delta.height / scaleFactor)
+        var rect = session.pageRect
+        let newWidth = max(40, rect.width + pageDelta.width)
+        // Dragging the bottom-right grip grows downward: the top edge stays put.
+        let newHeight = max(session.pageFontSize * 1.4, rect.height - pageDelta.height)
+        rect = CGRect(x: rect.minX, y: rect.maxY - newHeight, width: newWidth, height: newHeight)
+        session.pageRect = rect
+        textSession = session
+        layoutInlineEditor()
+    }
+
     private func layoutInlineEditor() {
-        guard let editor = inlineEditor, let session = textSession else { return }
-        editor.frame = convert(session.pageRect, from: session.page).insetBy(dx: -2, dy: -2)
-        editor.font = .systemFont(ofSize: session.pageFontSize * scaleFactor)
+        guard let box = inlineBox, let session = textSession else { return }
+        let margin = InlineTextBox.margin
+        box.frame = convert(session.pageRect, from: session.page).insetBy(dx: -margin, dy: -margin)
+        box.needsLayout = true
+        box.window?.invalidateCursorRects(for: box)
+
+        if let host = formatBarHost {
+            let size = host.fittingSize
+            var origin = NSPoint(x: box.frame.minX, y: box.frame.maxY + 6)
+            // Flip below the box if there is no room above.
+            if origin.y + size.height > bounds.maxY { origin.y = box.frame.minY - size.height - 6 }
+            origin.x = min(max(4, origin.x), max(4, bounds.maxX - size.width - 4))
+            host.frame = NSRect(origin: origin, size: size)
+        }
     }
 
     private func teardownInlineEditor() {
@@ -502,8 +646,12 @@ final class AnnotatingPDFView: PDFView {
             NotificationCenter.default.removeObserver(observer)
             scrollObserver = nil
         }
-        inlineEditor?.removeFromSuperview()
-        inlineEditor = nil
+        formatCancellable = nil
+        formatState = nil
+        formatBarHost?.removeFromSuperview()
+        formatBarHost = nil
+        inlineBox?.removeFromSuperview()
+        inlineBox = nil
         textSession = nil
         window?.makeFirstResponder(self)
     }
@@ -511,35 +659,38 @@ final class AnnotatingPDFView: PDFView {
     func commitInlineEditor() {
         guard let editor = inlineEditor, let session = textSession else { return }
         let text = editor.string
+        let state = formatState ?? TextFormatState()
+        let font = state.font(at: state.fontSize)
+        let color = state.color
         teardownInlineEditor()
 
         switch session.kind {
         case .add:
-            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty else { return }
-            let font = NSFont.systemFont(ofSize: session.pageFontSize)
+            guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+            // Grow the box downward if the typed text needs more room than it was given.
             let measured = (text as NSString).boundingRect(
-                with: CGSize(width: 520, height: 2000),
+                with: CGSize(width: session.pageRect.width, height: 4000),
                 options: [.usesLineFragmentOrigin],
                 attributes: [.font: font]
             )
+            let height = max(session.pageRect.height, measured.height + 6)
             let rect = CGRect(
                 x: session.pageRect.minX,
-                y: session.pageRect.maxY - measured.height - 8,
-                width: max(measured.width + 14, 36),
-                height: measured.height + 8
+                y: session.pageRect.maxY - height,
+                width: session.pageRect.width,
+                height: height
             )
             let annotation = PDFAnnotation(bounds: rect, forType: .freeText, withProperties: nil)
             annotation.contents = text
             annotation.font = font
-            annotation.fontColor = style.color
+            annotation.fontColor = color
             annotation.color = .clear
             insert(annotation, on: session.page)
 
         case .editLine(let original):
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard trimmed != original else { return }
-            viewModel?.editTextHandler?(session.page, session.pageRect, trimmed)
+            viewModel?.editTextHandler?(session.page, session.pageRect, trimmed, font, color)
         }
     }
 
@@ -561,12 +712,48 @@ final class AnnotatingPDFView: PDFView {
             for page in line.pages {
                 let lineBounds = line.bounds(for: page)
                 guard !lineBounds.isEmpty else { continue }
-                let annotation = PDFAnnotation(bounds: lineBounds, forType: subtype, withProperties: nil)
-                annotation.color = style.color.withAlphaComponent(tool == .highlight ? 0.5 : 1)
+                // PDFKit has no Squiggly subtype — draw a wavy ink line under the text instead.
+                let annotation = tool == .squiggly
+                    ? makeSquigglyAnnotation(under: lineBounds)
+                    : PDFAnnotation(bounds: lineBounds, forType: subtype, withProperties: nil)
+                if tool != .squiggly {
+                    annotation.color = style.color.withAlphaComponent(tool == .highlight ? 0.5 : 1)
+                }
                 insert(annotation, on: page)
             }
         }
         setCurrentSelection(nil, animate: false)
+    }
+
+    private func makeSquigglyAnnotation(under lineBounds: CGRect) -> PDFAnnotation {
+        let amplitude: CGFloat = 1.6
+        let wavelength: CGFloat = 5
+        let baseline = lineBounds.minY + 1
+        let rect = CGRect(
+            x: lineBounds.minX,
+            y: baseline - amplitude - 2,
+            width: lineBounds.width,
+            height: amplitude * 2 + 4
+        )
+        let annotation = PDFAnnotation(bounds: rect, forType: .ink, withProperties: nil)
+        annotation.color = style.color
+        let border = PDFBorder()
+        border.lineWidth = 1.2
+        annotation.border = border
+
+        let path = NSBezierPath()
+        let midY = rect.height / 2
+        path.move(to: CGPoint(x: 0, y: midY))
+        var x: CGFloat = 0
+        var up = true
+        while x < rect.width {
+            let next = min(x + wavelength / 2, rect.width)
+            path.line(to: CGPoint(x: next, y: midY + (up ? amplitude : -amplitude)))
+            up.toggle()
+            x = next
+        }
+        annotation.add(path)
+        return annotation
     }
 
     // MARK: - Ink
@@ -637,6 +824,46 @@ final class AnnotatingPDFView: PDFView {
         insert(makeShapeAnnotation(from: dragStartPagePoint, to: end), on: page)
     }
 
+    /// SnapShot: copies the dragged page region to the clipboard as an image.
+    private func finishSnapshot(with event: NSEvent) {
+        defer {
+            previewAnnotation = nil
+            dragPage = nil
+        }
+        guard let page = dragPage else { return }
+        if let preview = previewAnnotation { page.removeAnnotation(preview) }
+        let end = convert(convert(event.locationInWindow, from: nil), to: page)
+        let rect = CGRect(
+            x: min(dragStartPagePoint.x, end.x),
+            y: min(dragStartPagePoint.y, end.y),
+            width: abs(end.x - dragStartPagePoint.x),
+            height: abs(end.y - dragStartPagePoint.y)
+        )
+        guard rect.width > 4, rect.height > 4 else { return }
+
+        let scale: CGFloat = 2  // 144 dpi
+        let pixelSize = CGSize(width: rect.width * scale, height: rect.height * scale)
+        let full = page.thumbnail(of: CGSize(width: page.bounds(for: .mediaBox).width * scale,
+                                             height: page.bounds(for: .mediaBox).height * scale),
+                                  for: .mediaBox)
+        let crop = NSImage(size: pixelSize)
+        crop.lockFocus()
+        let pageBounds = page.bounds(for: .mediaBox)
+        // Page space is bottom-left origin, same as NSImage — offset by the crop rect.
+        let source = NSRect(
+            x: (rect.minX - pageBounds.minX) * scale,
+            y: (rect.minY - pageBounds.minY) * scale,
+            width: pixelSize.width,
+            height: pixelSize.height
+        )
+        full.draw(in: NSRect(origin: .zero, size: pixelSize), from: source, operation: .copy, fraction: 1)
+        crop.unlockFocus()
+
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.writeObjects([crop])
+        viewModel?.flashHandler?("Snapshot copied to clipboard")
+    }
+
     private func makeShapeAnnotation(from start: CGPoint, to end: CGPoint) -> PDFAnnotation {
         let pad = style.lineWidth + 2
         let rect = CGRect(
@@ -649,6 +876,17 @@ final class AnnotatingPDFView: PDFView {
         border.lineWidth = style.lineWidth
 
         switch tool {
+        case .snapshot:
+            // Marquee preview only — never committed as an annotation.
+            let a = PDFAnnotation(bounds: rect, forType: .square, withProperties: nil)
+            a.color = .controlAccentColor
+            a.border = border
+            return a
+        case .areaHighlight:
+            let a = PDFAnnotation(bounds: rect, forType: .square, withProperties: nil)
+            a.color = .clear
+            a.interiorColor = style.color.withAlphaComponent(0.4)
+            return a
         case .redact:
             let a = PDFAnnotation(bounds: rect, forType: .square, withProperties: nil)
             a.color = .black

@@ -5,7 +5,10 @@ enum Tool: String, CaseIterable, Identifiable {
     case select
     case highlight
     case underline
+    case squiggly
     case strikeout
+    case areaHighlight
+    case snapshot
     case ink
     case rectangle
     case ellipse
@@ -25,7 +28,10 @@ enum Tool: String, CaseIterable, Identifiable {
         case .select: return "Select"
         case .highlight: return "Highlight"
         case .underline: return "Underline"
+        case .squiggly: return "Squiggly"
         case .strikeout: return "Strikeout"
+        case .areaHighlight: return "Area Highlight"
+        case .snapshot: return "SnapShot"
         case .ink: return "Draw"
         case .rectangle: return "Rectangle"
         case .ellipse: return "Ellipse"
@@ -45,7 +51,10 @@ enum Tool: String, CaseIterable, Identifiable {
         case .select: return "cursorarrow"
         case .highlight: return "highlighter"
         case .underline: return "underline"
+        case .squiggly: return "underline"
         case .strikeout: return "strikethrough"
+        case .areaHighlight: return "rectangle.inset.filled"
+        case .snapshot: return "camera.viewfinder"
         case .ink: return "pencil.and.scribble"
         case .rectangle: return "rectangle"
         case .ellipse: return "circle"
@@ -62,7 +71,7 @@ enum Tool: String, CaseIterable, Identifiable {
 
     /// Markup tools operate on a text selection made by dragging.
     var isTextMarkup: Bool {
-        self == .highlight || self == .underline || self == .strikeout
+        self == .highlight || self == .underline || self == .squiggly || self == .strikeout
     }
 
     var isShape: Bool {
@@ -74,5 +83,17 @@ struct AnnotationStyle {
     var color: NSColor = .systemYellow
     var lineWidth: CGFloat = 2
     var opacity: CGFloat = 1
+    var fontName: String = "Helvetica"
     var fontSize: CGFloat = 14
+    var bold = false
+    var italic = false
+
+    /// Text font with the current family, size and traits.
+    var font: NSFont {
+        var font = NSFont(name: fontName, size: fontSize) ?? .systemFont(ofSize: fontSize)
+        let manager = NSFontManager.shared
+        if bold { font = manager.convert(font, toHaveTrait: .boldFontMask) }
+        if italic { font = manager.convert(font, toHaveTrait: .italicFontMask) }
+        return font
+    }
 }

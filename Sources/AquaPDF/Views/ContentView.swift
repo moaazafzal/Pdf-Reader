@@ -62,7 +62,8 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            viewModel.editTextHandler = { page, lineRect, newText in
+            viewModel.flashHandler = { flash($0) }
+            viewModel.editTextHandler = { page, lineRect, newText, font, color in
                 let pageIndex = document.pdf.index(for: page)
                 guard pageIndex >= 0 else { return }
                 let before = document.pdf.dataRepresentation()
@@ -70,7 +71,9 @@ struct ContentView: View {
                     in: document.pdf,
                     pageIndex: pageIndex,
                     lineRect: lineRect,
-                    newText: newText
+                    newText: newText,
+                    font: font,
+                    textColor: color
                 )
                 document.registerContentUndo(undoManager, actionName: "Edit Text", previousData: before)
                 document.objectWillChange.send()
@@ -159,8 +162,26 @@ struct ContentView: View {
             setDisplayMode: { mode in
                 viewModel.pdfView?.displayMode = mode
                 viewModel.objectWillChange.send()  // refresh ribbon active state
-            }
+            },
+            toggleAutoScroll: {
+                guard let view = viewModel.pdfView as? AnnotatingPDFView else { return }
+                view.toggleAutoScroll()
+                viewModel.isAutoScrolling = view.isAutoScrolling
+            },
+            toggleFullScreen: { NSApp.keyWindow?.toggleFullScreen(nil) },
+            readPage: { viewModel.speech.readPage(viewModel.pdfView?.currentPage) },
+            readFrom: { viewModel.speech.readFrom(page: viewModel.currentPageIndex, in: document.pdf) },
+            readPause: { viewModel.speech.togglePause() },
+            readStop: { viewModel.speech.stop() },
+            wordCount: { showWordCount() }
         )
+    }
+
+    private func showWordCount() {
+        let text = document.pdf.string ?? ""
+        let words = text.split { $0.isWhitespace || $0.isNewline }.count
+        let characters = text.count
+        flash("\(words) words · \(characters) characters · \(document.pdf.pageCount) pages")
     }
 
     // MARK: - Actions

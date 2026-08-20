@@ -73,8 +73,8 @@ struct RibbonView: View {
 
     @ViewBuilder private var homeTab: some View {
         RibbonGroup("Tools") {
-            toolButton(.select, title: "Hand")
             toolButton(.select, title: "Select")
+            toolButton(.snapshot, title: "SnapShot")
         }
         RibbonGroup("Zoom") {
             RibbonButton(icon: "minus.magnifyingglass", title: "Out") { actions.zoomOut() }
@@ -116,7 +116,9 @@ struct RibbonView: View {
         RibbonGroup("Text Markup") {
             toolButton(.highlight, title: "Highlight")
             toolButton(.underline, title: "Underline")
+            toolButton(.squiggly, title: "Squiggly")
             toolButton(.strikeout, title: "Strikeout")
+            toolButton(.areaHighlight, title: "Area")
         }
         RibbonGroup("Notes") {
             toolButton(.note, title: "Note")
@@ -217,9 +219,31 @@ struct RibbonView: View {
             RibbonButton(icon: "doc.text", title: "Continuous", active: actions.displayMode() == .singlePageContinuous) {
                 actions.setDisplayMode(.singlePageContinuous)
             }
-            RibbonButton(icon: "book", title: "Two-Up", active: actions.displayMode() == .twoUpContinuous) {
+            RibbonButton(icon: "book", title: "Facing", active: actions.displayMode() == .twoUpContinuous) {
                 actions.setDisplayMode(.twoUpContinuous)
             }
+        }
+        RibbonGroup("Visual Mode") {
+            ForEach(AnnotatingPDFView.VisualMode.allCases) { mode in
+                RibbonButton(icon: mode.systemImage, title: mode.rawValue, active: viewModel.visualMode == mode) {
+                    viewModel.visualMode = mode
+                }
+            }
+        }
+        RibbonGroup("Reading") {
+            RibbonButton(icon: "arrow.down.doc", title: "AutoScroll", active: viewModel.isAutoScrolling) {
+                actions.toggleAutoScroll()
+            }
+            RibbonButton(icon: "rectangle.inset.filled", title: "Full Screen") { actions.toggleFullScreen() }
+        }
+        RibbonGroup("Read Out Loud") {
+            RibbonButton(icon: "speaker.wave.2", title: "This Page") { actions.readPage() }
+            RibbonButton(icon: "text.line.first.and.arrowtriangle.forward", title: "From Here") { actions.readFrom() }
+            RibbonButton(icon: "playpause", title: "Pause") { actions.readPause() }
+            RibbonButton(icon: "stop.fill", title: "Stop") { actions.readStop() }
+        }
+        RibbonGroup("Analyze") {
+            RibbonButton(icon: "textformat.123", title: "Word Count") { actions.wordCount() }
         }
         RibbonGroup("Inspector") {
             RibbonButton(icon: "sidebar.right", title: "Properties") { actions.toggleInspector() }
@@ -354,4 +378,11 @@ struct RibbonActions {
     var toggleInspector: () -> Void = {}
     var displayMode: () -> PDFDisplayMode = { .singlePageContinuous }
     var setDisplayMode: (PDFDisplayMode) -> Void = { _ in }
+    var toggleAutoScroll: () -> Void = {}
+    var toggleFullScreen: () -> Void = {}
+    var readPage: () -> Void = {}
+    var readFrom: () -> Void = {}
+    var readPause: () -> Void = {}
+    var readStop: () -> Void = {}
+    var wordCount: () -> Void = {}
 }
