@@ -40,6 +40,16 @@ struct ContentView: View {
                 viewModel.tool = .signature
             }
         }
+        .sheet(isPresented: $viewModel.showPageNumbers) {
+            PageNumbersView(document: document.pdf, viewModel: viewModel) { before, stamped in
+                guard stamped > 0 else { return flash("Could not insert page numbers") }
+                document.registerContentUndo(undoManager, actionName: "Insert Page Numbers", previousData: before)
+                document.objectWillChange.send()
+                ThumbnailCache.shared.invalidate()
+                viewModel.pdfView?.needsDisplay = true
+                flash("Numbered \(stamped) page(s) — ⌘Z to undo")
+            }
+        }
         .sheet(isPresented: $viewModel.showStamps) {
             StampPaletteView(viewModel: viewModel)
         }
@@ -151,7 +161,15 @@ struct ContentView: View {
                 .help("First page")
             Button { viewModel.pdfView?.goToPreviousPage(nil) } label: { Image(systemName: "chevron.up") }
                 .help("Previous page")
-            Text("\(viewModel.currentPageIndex + 1) / \(viewModel.pageCount)")
+            // Type a page number here and press Return to jump straight to it.
+            PageNumberField(
+                page: viewModel.currentPageIndex + 1,
+                pageCount: viewModel.pageCount
+            ) { requested in
+                goToPage(requested)
+            }
+            .frame(width: 48)
+            Text("/ \(viewModel.pageCount)")
                 .font(.system(size: 11).monospacedDigit())
             Button { viewModel.pdfView?.goToNextPage(nil) } label: { Image(systemName: "chevron.down") }
                 .help("Next page")
@@ -197,6 +215,14 @@ struct ContentView: View {
         .padding(.vertical, 4)
         .background(Color.from(.windowBackgroundColor))
         .overlay(Divider(), alignment: .top)
+    }
+
+    /// Jumps to a 1-based page number, clamped to the document.
+    private func goToPage(_ requested: Int) {
+        let index = min(max(requested, 1), max(viewModel.pageCount, 1)) - 1
+        guard let page = document.pdf.page(at: index) else { return }
+        viewModel.pdfView?.go(to: page)
+        viewModel.currentPageIndex = index
     }
 
     // MARK: - Handlers
@@ -295,7 +321,8 @@ struct ContentView: View {
             toggleFieldHighlight: { toggleFieldHighlight() },
             showShortcuts: { showShortcuts() },
             showAbout: { showAbout() },
-            makeDefaultReader: { makeDefaultReader() }
+            makeDefaultReader: { makeDefaultReader() },
+            focusPageField: { NSApp.keyWindow?.makeFirstResponder(nil) }
         )
     }
 

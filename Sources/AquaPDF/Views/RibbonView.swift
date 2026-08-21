@@ -249,6 +249,7 @@ struct RibbonView: View {
         }
         RibbonGroup("Pages") {
             RibbonButton(icon: "square.grid.3x3", title: "Organize") { actions.organizer() }
+            RibbonButton(icon: "list.number", title: "Page Numbers") { viewModel.showPageNumbers = true }
         }
     }
 
@@ -260,6 +261,9 @@ struct RibbonView: View {
         RibbonGroup("Combine") {
             RibbonButton(icon: "doc.on.doc", title: "Merge…") { actions.merge() }
             RibbonButton(icon: "square.split.2x1", title: "Split…") { actions.split() }
+        }
+        RibbonGroup("Numbering") {
+            RibbonButton(icon: "list.number", title: "Page Numbers") { viewModel.showPageNumbers = true }
         }
     }
 
@@ -542,6 +546,8 @@ struct CommandSearchView: View {
             Command(name: "Merge PDFs", tab: .organize, run: actions.merge),
             Command(name: "Split PDF", tab: .organize, run: actions.split),
             Command(name: "Organize Pages", tab: .organize, run: actions.organizer),
+            Command(name: "Insert Page Numbers", tab: .organize) { viewModel.showPageNumbers = true },
+            Command(name: "Go to Page", tab: .home, run: actions.focusPageField),
             Command(name: "Export to Word", tab: .convert, run: actions.exportDocx),
             Command(name: "Export to PNG", tab: .convert, run: actions.exportImages),
             Command(name: "Export Text", tab: .convert, run: actions.exportText),
@@ -667,4 +673,5 @@ struct RibbonActions {
     var showShortcuts: () -> Void = {}
     var showAbout: () -> Void = {}
     var makeDefaultReader: () -> Void = {}
+    var focusPageField: () -> Void = {}
 }

@@ -47,7 +47,7 @@ from late 2013 onward is covered.
 - **Ribbon** with File, Home, Comment, Edit, Organize, Convert, Form, Protect, View and Help tabs
 - **Command search** (⌥Q) finds any command by name, like Foxit's Alt+Q
 - **Navigation pane**: Pages, Bookmarks, Comments, Attachments, Signatures, Search
-- **Status bar**: first/previous/next/last page, previous/next view, zoom slider and percentage
+- **Status bar**: editable page box (type a page number and press Return to jump), first/previous/next/last page, previous/next view, zoom slider and percentage
 - Light / Dark / System theme, and Default / Night / Sepia / Eye Comfort visual modes
 
 ## Features
@@ -81,6 +81,9 @@ from late 2013 onward is covered.
 
 **Organize**
 - Reorder, rotate, delete and extract pages; merge PDFs; split into single pages
+- Insert page numbers: six positions, formats (1 · Page 1 · 1 of N · Page 1 of N · roman ·
+  letters), custom prefix, start number, size, margin, color, all pages or a range, with a
+  live preview. Numbers are written into page content, so they print and survive in any reader.
 
 **Convert**
 - Export to Word (.docx), PNG images, or plain text

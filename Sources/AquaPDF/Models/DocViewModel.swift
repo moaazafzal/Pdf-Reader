@@ -17,6 +17,7 @@ final class DocViewModel: ObservableObject {
     @Published var showOrganizer = false
     @Published var showSignatureManager = false
     @Published var showStamps = false
+    @Published var showPageNumbers = false
     @Published var showPreferences = false
     @Published var showProperties = false
     @Published var showLoupe = false

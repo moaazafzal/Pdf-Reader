@@ -201,6 +201,174 @@ enum PDFOperations {
         return NSImage(cgImage: cgImage, size: rect.size)
     }
 
+
+    // MARK: - Page numbering
+
+    /// Where a page number is stamped on the page.
+    enum NumberPosition: String, CaseIterable, Identifiable {
+        case topLeft = "Top Left"
+        case topCenter = "Top Center"
+        case topRight = "Top Right"
+        case bottomLeft = "Bottom Left"
+        case bottomCenter = "Bottom Center"
+        case bottomRight = "Bottom Right"
+        var id: String { rawValue }
+        var isTop: Bool { self == .topLeft || self == .topCenter || self == .topRight }
+    }
+
+    /// How the number is rendered.
+    enum NumberFormat: String, CaseIterable, Identifiable {
+        case plain = "1"
+        case pageN = "Page 1"
+        case ofTotal = "1 of N"
+        case pageOfTotal = "Page 1 of N"
+        case roman = "i, ii, iii"
+        case letters = "A, B, C"
+        var id: String { rawValue }
+    }
+
+    struct PageNumberOptions {
+        var position: NumberPosition = .bottomCenter
+        var format: NumberFormat = .plain
+        var startNumber = 1
+        /// Zero-based page range that receives numbers.
+        var range: ClosedRange<Int>?
+        var fontSize: CGFloat = 11
+        var margin: CGFloat = 28
+        var color: NSColor = .black
+        var prefix = ""
+    }
+
+    static func romanNumeral(_ value: Int) -> String {
+        guard value > 0 else { return "" }
+        let table: [(Int, String)] = [
+            (1000, "m"), (900, "cm"), (500, "d"), (400, "cd"), (100, "c"), (90, "xc"),
+            (50, "l"), (40, "xl"), (10, "x"), (9, "ix"), (5, "v"), (4, "iv"), (1, "i"),
+        ]
+        var remaining = value, out = ""
+        for (number, symbol) in table {
+            while remaining >= number { out += symbol; remaining -= number }
+        }
+        return out
+    }
+
+    /// Spreadsheet-style letters: A, B, ... Z, AA, AB, …
+    static func letterLabel(_ value: Int) -> String {
+        guard value > 0 else { return "" }
+        var remaining = value, out = ""
+        while remaining > 0 {
+            let index = (remaining - 1) % 26
+            out = String(UnicodeScalar(65 + index)!) + out
+            remaining = (remaining - 1) / 26
+        }
+        return out
+    }
+
+    static func pageNumberText(number: Int, total: Int, options: PageNumberOptions) -> String {
+        let body: String
+        switch options.format {
+        case .plain: body = "\(number)"
+        case .pageN: body = "Page \(number)"
+        case .ofTotal: body = "\(number) of \(total)"
+        case .pageOfTotal: body = "Page \(number) of \(total)"
+        case .roman: body = romanNumeral(number)
+        case .letters: body = letterLabel(number)
+        }
+        return options.prefix.isEmpty ? body : options.prefix + " " + body
+    }
+
+    /// Stamps page numbers into real page content, so they print and appear in every reader.
+    /// The whole document is rebuilt in a single pass and annotations are carried over.
+    @discardableResult
+    static func insertPageNumbers(in document: PDFDocument, options: PageNumberOptions) -> Int {
+        let pageCount = document.pageCount
+        guard pageCount > 0 else { return 0 }
+        let range = options.range ?? 0...(pageCount - 1)
+
+        let data = NSMutableData()
+        guard let consumer = CGDataConsumer(data: data) else { return 0 }
+        var firstBox = document.page(at: 0)?.bounds(for: .mediaBox)
+            ?? CGRect(x: 0, y: 0, width: 612, height: 792)
+        guard let ctx = CGContext(consumer: consumer, mediaBox: &firstBox, nil) else { return 0 }
+
+        let numbered = range.count
+        var stamped = 0
+
+        for i in 0..<pageCount {
+            guard let page = document.page(at: i), let cgPage = page.pageRef else { continue }
+            var box = page.bounds(for: .mediaBox)
+            ctx.beginPDFPage([kCGPDFContextMediaBox: NSData(
+                bytes: &box, length: MemoryLayout<CGRect>.size
+            )] as CFDictionary)
+            ctx.drawPDFPage(cgPage)
+
+            if range.contains(i) {
+                let number = options.startNumber + (i - range.lowerBound)
+                let text = pageNumberText(number: number, total: numbered, options: options)
+                draw(pageNumber: text, in: box, options: options, context: ctx)
+                stamped += 1
+            }
+            ctx.endPDFPage()
+        }
+        ctx.closePDF()
+
+        guard let rebuilt = PDFDocument(data: data as Data), rebuilt.pageCount == pageCount else { return 0 }
+
+        // Move annotations and rotation onto the rebuilt pages, then swap the pages in.
+        for i in 0..<pageCount {
+            guard let old = document.page(at: i), let new = rebuilt.page(at: i) else { continue }
+            new.rotation = old.rotation
+            let annotations = old.annotations
+            for a in annotations { old.removeAnnotation(a) }
+            for a in annotations { new.addAnnotation(a) }
+        }
+        for i in stride(from: pageCount - 1, through: 0, by: -1) {
+            document.removePage(at: i)
+        }
+        for i in 0..<pageCount {
+            guard let new = rebuilt.page(at: i) else { continue }
+            document.insert(new, at: i)
+        }
+        return stamped
+    }
+
+    private static func draw(
+        pageNumber text: String,
+        in box: CGRect,
+        options: PageNumberOptions,
+        context ctx: CGContext
+    ) {
+        let font = CTFontCreateWithName("Helvetica" as CFString, options.fontSize, nil)
+        let attributes: [CFString: Any] = [
+            kCTFontAttributeName: font,
+            kCTForegroundColorAttributeName: options.color.cgColor,
+        ]
+        guard let attributed = CFAttributedStringCreate(nil, text as CFString, attributes as CFDictionary)
+        else { return }
+        let line = CTLineCreateWithAttributedString(attributed)
+        let width = CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil))
+
+        let x: CGFloat
+        switch options.position {
+        case .topLeft, .bottomLeft:
+            x = box.minX + options.margin
+        case .topCenter, .bottomCenter:
+            x = box.midX - width / 2
+        case .topRight, .bottomRight:
+            x = box.maxX - options.margin - width
+        }
+        let y = options.position.isTop
+            ? box.maxY - options.margin - options.fontSize
+            : box.minY + options.margin
+
+        ctx.saveGState()
+        ctx.setTextDrawingMode(.fill)
+        ctx.textMatrix = .identity
+        ctx.textPosition = CGPoint(x: x, y: y)
+        CTLineDraw(line, ctx)
+        ctx.restoreGState()
+    }
+
     // MARK: - Merge / split / extract
 
     static func merge(urls: [URL], into document: PDFDocument) {
