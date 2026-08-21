@@ -408,6 +408,8 @@ final class AnnotatingPDFView: PDFView {
     }
 
     override func keyDown(with event: NSEvent) {
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+
         switch event.keyCode {
         case 51, 117:  // delete / forward delete
             if let selected = viewModel?.selectedAnnotation {
@@ -420,18 +422,104 @@ final class AnnotatingPDFView: PDFView {
                 return
             }
         case 53:  // escape
-            if tool.isMultiPoint, !multiPoints.isEmpty {
-                cancelMultiPoint()
+            if tool.isMultiPoint, !multiPoints.isEmpty { cancelMultiPoint(); return }
+            if isAutoScrolling { stopAutoScroll(); return }
+            if viewModel?.selectedAnnotation != nil {
+                viewModel?.selectedAnnotation = nil
+                needsDisplay = true
                 return
             }
-            if isAutoScrolling {
-                stopAutoScroll()
+            if window?.styleMask.contains(.fullScreen) == true {
+                window?.toggleFullScreen(nil)
                 return
             }
+        case 49:  // space / shift-space scrolls a screen, as in Foxit
+            if modifiers.isEmpty || modifiers == .shift {
+                modifiers == .shift ? pageUpOrScroll() : pageDownOrScroll()
+                return
+            }
+        case 115:  // home
+            if modifiers.contains(.command) { goToFirstPage(nil); return }
+        case 119:  // end
+            if modifiers.contains(.command) { goToLastPage(nil); return }
+        case 116:  // page up
+            goToPreviousPage(nil); return
+        case 121:  // page down
+            goToNextPage(nil); return
+        case 123 where modifiers.contains(.option):  // ⌥←  previous view
+            goBack(nil); return
+        case 124 where modifiers.contains(.option):  // ⌥→  next view
+            goForward(nil); return
+        case 123, 126:  // left / up arrow
+            if modifiers.isEmpty, displayMode == .singlePage { goToPreviousPage(nil); return }
+        case 124, 125:  // right / down arrow
+            if modifiers.isEmpty, displayMode == .singlePage { goToNextPage(nil); return }
         default:
             break
         }
+
+        // Single-key tool accelerators (Foxit: Preferences ▸ General ▸ single-key accelerators).
+        // Never while text is being entered, or typing in a form field would switch tools.
+        if singleKeyAccelerators, modifiers.isEmpty, inlineEditor == nil, !isEditingText,
+           let key = event.charactersIgnoringModifiers?.lowercased(),
+           let tool = Self.singleKeyTools[key]
+        {
+            viewModel?.tool = tool
+            return
+        }
+
         super.keyDown(with: event)
+    }
+
+    /// True while a form field or any text view has keyboard focus.
+    private var isEditingText: Bool {
+        guard let responder = window?.firstResponder else { return false }
+        if responder === self { return false }
+        if responder is NSTextView || responder is NSTextField { return true }
+        // PDFKit edits form fields inside a field editor owned by a descendant view.
+        if let view = responder as? NSView, view.isDescendant(of: self), view !== self { return true }
+        return false
+    }
+
+    /// Letter keys that pick a tool directly, following the Acrobat/Foxit convention.
+    static let singleKeyTools: [String: Tool] = [
+        "h": .hand,
+        "v": .select,
+        "z": .marqueeZoom,
+        "g": .snapshot,
+        "u": .highlight,
+        "t": .textBox,
+        "s": .note,
+        "p": .ink,
+        "k": .callout,
+        "r": .rectangle,
+        "o": .ellipse,
+        "l": .line,
+        "a": .arrow,
+        "e": .eraser,
+        "d": .measureDistance,
+        "x": .redact,
+    ]
+
+    private func pageDownOrScroll() {
+        guard let scrollView = documentView?.enclosingScrollView else { return goToNextPage(nil) }
+        let clip = scrollView.contentView
+        let maxY = max(0, (documentView?.frame.height ?? 0) - clip.bounds.height)
+        if clip.bounds.origin.y >= maxY - 1 { goToNextPage(nil); return }
+        var origin = clip.bounds.origin
+        origin.y = min(origin.y + clip.bounds.height * 0.92, maxY)
+        clip.scroll(to: origin)
+        scrollView.reflectScrolledClipView(clip)
+    }
+
+    private func pageUpOrScroll() {
+        guard let scrollView = documentView?.enclosingScrollView else { return goToPreviousPage(nil) }
+        let clip = scrollView.contentView
+        if clip.bounds.origin.y <= 1 { goToPreviousPage(nil); return }
+        var origin = clip.bounds.origin
+        origin.y = max(origin.y - clip.bounds.height * 0.92, 0)
+        clip.scroll(to: origin)
+        scrollView.reflectScrolledClipView(clip)
     }
 
     /// Called when the active tool changes (from PDFKitView.updateNSView).
@@ -440,6 +528,129 @@ final class AnnotatingPDFView: PDFView {
         if !multiPoints.isEmpty { cancelMultiPoint() }
         clearHover()
     }
+
+
+    // MARK: - Mouse conventions (matching Foxit)
+
+    /// Preference-backed toggles, mirroring Foxit's General preferences.
+    private var middleButtonAutoScroll: Bool {
+        UserDefaults.standard.object(forKey: "middleButtonAutoScroll") == nil
+            || UserDefaults.standard.bool(forKey: "middleButtonAutoScroll")
+    }
+    private var singleKeyAccelerators: Bool {
+        UserDefaults.standard.object(forKey: "singleKeyAccelerators") == nil
+            || UserDefaults.standard.bool(forKey: "singleKeyAccelerators")
+    }
+    private var handToolWheelZoom: Bool {
+        UserDefaults.standard.bool(forKey: "handToolWheelZoom")
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        // Command or Control plus wheel zooms about the pointer, as it does in Foxit.
+        if modifiers.contains(.command) || modifiers.contains(.control)
+            || (handToolWheelZoom && tool == .hand && modifiers.isEmpty)
+        {
+            zoom(by: event.scrollingDeltaY, at: convert(event.locationInWindow, from: nil))
+            return
+        }
+        // Shift plus wheel scrolls horizontally.
+        if modifiers.contains(.shift), let scrollView = documentView?.enclosingScrollView {
+            let clip = scrollView.contentView
+            var origin = clip.bounds.origin
+            let delta = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY : event.scrollingDeltaY * 8
+            origin.x = max(0, min(origin.x - delta, max(0, (documentView?.frame.width ?? 0) - clip.bounds.width)))
+            clip.scroll(to: origin)
+            scrollView.reflectScrolledClipView(clip)
+            return
+        }
+        super.scrollWheel(with: event)
+    }
+
+    /// Zooms while keeping the point under the cursor anchored.
+    private func zoom(by delta: CGFloat, at viewPoint: CGPoint) {
+        guard delta != 0, let page = page(for: viewPoint, nearest: true) else { return }
+        let anchor = convert(viewPoint, to: page)
+        autoScales = false
+        let factor = delta > 0 ? 1.1 : (1 / 1.1)
+        scaleFactor = min(max(scaleFactor * factor, 0.1), 12)
+        layoutDocumentView()
+        // Re-centre so the anchored point stays under the pointer.
+        let newViewPoint = convert(anchor, from: page)
+        if let scrollView = documentView?.enclosingScrollView {
+            let clip = scrollView.contentView
+            var origin = clip.bounds.origin
+            origin.x += newViewPoint.x - viewPoint.x
+            origin.y -= newViewPoint.y - viewPoint.y
+            clip.scroll(to: origin)
+            scrollView.reflectScrolledClipView(clip)
+        }
+        viewModel?.scaleFactor = scaleFactor
+    }
+
+    override func otherMouseDown(with event: NSEvent) {
+        // Middle button toggles AutoScroll (Foxit: "Enable middle mouse button to AutoScroll").
+        if event.buttonNumber == 2, middleButtonAutoScroll {
+            toggleAutoScroll()
+            viewModel?.isAutoScrolling = isAutoScrolling
+            return
+        }
+        super.otherMouseDown(with: event)
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        let menu = NSMenu()
+        let viewPoint = convert(event.locationInWindow, from: nil)
+
+        if let page = page(for: viewPoint, nearest: true) {
+            let pagePoint = convert(viewPoint, to: page)
+            if let hit = page.annotation(at: pagePoint), !(hit.isLink || hit.isWidget) {
+                viewModel?.selectedAnnotation = hit
+                menu.addItem(withTitle: "Delete Annotation", action: #selector(contextDelete), keyEquivalent: "")
+                if hit.type == "FreeText" {
+                    menu.addItem(withTitle: "Edit Text", action: #selector(contextEditText), keyEquivalent: "")
+                }
+                menu.addItem(.separator())
+            }
+        }
+
+        if currentSelection?.string?.isEmpty == false {
+            menu.addItem(withTitle: "Copy", action: #selector(contextCopy), keyEquivalent: "")
+            menu.addItem(withTitle: "Highlight", action: #selector(contextHighlight), keyEquivalent: "")
+            menu.addItem(.separator())
+        }
+
+        menu.addItem(withTitle: "Select All", action: #selector(contextSelectAll), keyEquivalent: "")
+        menu.addItem(.separator())
+        menu.addItem(withTitle: "Zoom In", action: #selector(contextZoomIn), keyEquivalent: "")
+        menu.addItem(withTitle: "Zoom Out", action: #selector(contextZoomOut), keyEquivalent: "")
+        menu.addItem(withTitle: "Fit Width", action: #selector(contextFitWidth), keyEquivalent: "")
+        for item in menu.items where item.action != nil { item.target = self }
+        return menu
+    }
+
+    @objc private func contextDelete() {
+        if let selected = viewModel?.selectedAnnotation { remove(selected) }
+    }
+
+    @objc private func contextEditText() {
+        guard let selected = viewModel?.selectedAnnotation, let page = selected.page else { return }
+        beginEditAnnotation(selected, on: page)
+    }
+
+    @objc private func contextCopy() { copy(nil) }
+
+    @objc private func contextHighlight() {
+        let previous = viewModel?.tool
+        viewModel?.tool = .highlight
+        applyMarkupFromMenu()
+        viewModel?.tool = previous ?? .select
+    }
+
+    @objc private func contextSelectAll() { selectAll(nil) }
+    @objc private func contextZoomIn() { zoomIn(nil) }
+    @objc private func contextZoomOut() { zoomOut(nil) }
+    @objc private func contextFitWidth() { autoScales = true }
 
     // MARK: - Selection handles
 
@@ -674,6 +885,8 @@ final class AnnotatingPDFView: PDFView {
     }
 
     // MARK: - Text markup
+
+    func applyMarkupFromMenu() { applyMarkup() }
 
     private func applyMarkup() {
         guard let selection = currentSelection, let string = selection.string, !string.isEmpty else { return }

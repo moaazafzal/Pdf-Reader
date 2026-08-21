@@ -18,6 +18,9 @@ struct PreferencesView: View {
     @AppStorage("highlightFormFields") private var highlightFormFields = true
     @AppStorage("smoothText") private var smoothText = true
     @AppStorage("appearanceRaw") private var appearanceRaw: String = "system"
+    @AppStorage("singleKeyAccelerators") private var singleKeyAccelerators = true
+    @AppStorage("middleButtonAutoScroll") private var middleButtonAutoScroll = true
+    @AppStorage("handToolWheelZoom") private var handToolWheelZoom = false
 
     var body: some View {
         TabView {
@@ -25,6 +28,7 @@ struct PreferencesView: View {
             commentingTab.tabItem { Label("Commenting", systemImage: "text.bubble") }
             pageDisplayTab.tabItem { Label("Page Display", systemImage: "doc.text.image") }
             measuringTab.tabItem { Label("Measuring", systemImage: "ruler") }
+            inputTab.tabItem { Label("Keys & Mouse", systemImage: "keyboard") }
             generalTab.tabItem { Label("General", systemImage: "gearshape") }
         }
         .frame(width: 470, height: 330)
@@ -131,6 +135,25 @@ struct PreferencesView: View {
                     Text("144 dpi").tag(144)
                     Text("300 dpi").tag(300)
                 }
+            }
+        }
+        .groupedForm()
+    }
+
+    private var inputTab: some View {
+        Form {
+            Section(header: Text("Keyboard")) {
+                Toggle("Use single-key accelerators", isOn: $singleKeyAccelerators)
+                Text("H hand · V select · Z marquee · G snapshot · U highlight · T text · S note · P pencil · K callout · R rectangle · O oval · L line · A arrow · E eraser · D distance · X redact")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            Section(header: Text("Mouse")) {
+                Toggle("Middle button starts AutoScroll", isOn: $middleButtonAutoScroll)
+                Toggle("Hand tool uses mouse-wheel zooming", isOn: $handToolWheelZoom)
+                Text("⌘ or Control plus the wheel always zooms; Shift plus the wheel scrolls sideways.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
         }
         .groupedForm()

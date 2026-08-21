@@ -104,6 +104,30 @@ from late 2013 onward is covered.
 - Open, Save, Save As, Print, Batch Print, Email, Document Properties
   (description, security, fonts), Preferences
 
+## Keyboard & mouse
+
+Shortcuts follow Foxit's scheme. Foxit is Windows software and uses Ctrl; on macOS those map
+to ⌘, since literal Ctrl would collide with system behavior.
+
+| | |
+|---|---|
+| Zoom | `⌘=` in · `⌘-` out · `⌘1` actual size · `⌘0` fit page · `⌘2` fit width · `⌘3` fit visible |
+| View | `⌘4` reflow · `⌘H` read mode · `⌘6` text viewer · `F11` full screen · `⇧⌘H` autoscroll |
+| Panels | `F4` navigation pane · `⌥⌘I` properties panel |
+| Navigate | `⌘↑`/`⌘↓` page · `Page Up`/`Page Down` · `⌘Home`/`⌘End` · `⇧⌘N` go to page · `⌥←`/`⌥→` previous/next view · `Space`/`⇧Space` scroll |
+| Search | `⌘F` find · `⌘G` next · `⇧⌘G` previous · `⇧⌘F` search panel |
+| Document | `⇧⌘T` organize · `⌘D` properties · `⌘K` preferences · `⌥Q` command search |
+
+**Single-key tool accelerators** (toggle in Preferences ▸ Keys & Mouse): `H` hand · `V` select ·
+`Z` marquee · `G` snapshot · `U` highlight · `T` text · `S` note · `P` pencil · `K` callout ·
+`R` rectangle · `O` oval · `L` line · `A` arrow · `E` eraser · `D` distance · `X` redact.
+They are suppressed while typing, so form fields and text boxes are unaffected.
+
+**Mouse**: `⌘`/`Control` + wheel zooms about the pointer · `Shift` + wheel scrolls sideways ·
+middle button toggles AutoScroll · right-click opens a context menu (delete, edit text, copy,
+highlight, zoom) · double-clicking text you added reopens it for editing. Optionally the Hand
+tool can zoom with a plain wheel, as in Foxit.
+
 ## Performance
 
 Measured on a 200-page text-heavy PDF:

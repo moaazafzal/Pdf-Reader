@@ -74,6 +74,50 @@ struct ContentView: View {
                 viewModel.showSignatureManager = true
             }
         }
+        .onCommand(.zoomIn) { viewModel.pdfView?.zoomIn(nil) }
+        .onCommand(.zoomOut) { viewModel.pdfView?.zoomOut(nil) }
+        .onCommand(.actualSize) {
+            viewModel.pdfView?.autoScales = false
+            viewModel.pdfView?.scaleFactor = 1
+        }
+        .onCommand(.fitPage) { fitPage() }
+        .onCommand(.fitWidth) {
+            viewModel.pdfView?.autoScales = true
+            viewModel.pdfView?.displayMode = .singlePageContinuous
+        }
+        .onCommand(.fitVisible) { fitVisible() }
+        .onCommand(.reflow) { viewModel.readingMode = viewModel.readingMode == .reflow ? .normal : .reflow }
+        .onCommand(.textViewer) { viewModel.readingMode = viewModel.readingMode == .textViewer ? .normal : .textViewer }
+        .onCommand(.readMode) { viewModel.readingMode = viewModel.readingMode == .read ? .normal : .read }
+        .onCommand(.fullScreen) { NSApp.keyWindow?.toggleFullScreen(nil) }
+        .onCommand(.autoScroll) {
+            guard let view = viewModel.pdfView as? AnnotatingPDFView else { return }
+            view.toggleAutoScroll()
+            viewModel.isAutoScrolling = view.isAutoScrolling
+        }
+        .onCommand(.firstPage) { viewModel.pdfView?.goToFirstPage(nil) }
+        .onCommand(.lastPage) { viewModel.pdfView?.goToLastPage(nil) }
+        .onCommand(.nextPage) { viewModel.pdfView?.goToNextPage(nil) }
+        .onCommand(.previousPage) { viewModel.pdfView?.goToPreviousPage(nil) }
+        .onCommand(.previousView) { viewModel.pdfView?.goBack(nil) }
+        .onCommand(.nextView) { viewModel.pdfView?.goForward(nil) }
+        .onCommand(.goToPage) { promptForPage() }
+        .onCommand(.find) {
+            viewModel.sidebarTab = .search
+            viewModel.showSidebar = true
+        }
+        .onCommand(.findNext) { stepSearch(forward: true) }
+        .onCommand(.findPrevious) { stepSearch(forward: false) }
+        .onCommand(.advancedSearch) {
+            viewModel.sidebarTab = .search
+            viewModel.showSidebar = true
+        }
+        .onCommand(.toggleNavigationPane) { viewModel.showSidebar.toggle() }
+        .onCommand(.toggleProperties) { showInspector.toggle() }
+        .onCommand(.organizePages) { viewModel.showOrganizer = true }
+        .onCommand(.pageNumbers) { viewModel.showPageNumbers = true }
+        .onCommand(.preferences) { viewModel.showPreferences = true }
+        .onCommand(.documentProperties) { viewModel.showProperties = true }
         .onAppear { installHandlers() }
     }
 
@@ -223,6 +267,40 @@ struct ContentView: View {
         guard let page = document.pdf.page(at: index) else { return }
         viewModel.pdfView?.go(to: page)
         viewModel.currentPageIndex = index
+    }
+
+    /// Fit Visible: scale so the page's content (not its paper size) fills the window.
+    private func fitVisible() {
+        guard let view = viewModel.pdfView, let page = view.currentPage else { return }
+        let content = page.bounds(for: .cropBox)
+        guard content.width > 0, content.height > 0 else { return }
+        view.autoScales = false
+        view.scaleFactor = min(view.bounds.width / content.width, view.bounds.height / content.height) * 0.97
+    }
+
+    /// Go to Page… (⇧⌘N in Foxit).
+    private func promptForPage() {
+        guard let text = InputPrompt.run(
+            title: "Go to Page",
+            message: "Page number (1–\(viewModel.pageCount)):",
+            defaultValue: "\(viewModel.currentPageIndex + 1)"
+        ), let requested = Int(text.trimmingCharacters(in: .whitespaces)) else { return }
+        goToPage(requested)
+    }
+
+    /// Find Next / Find Previous over the current search results.
+    private func stepSearch(forward: Bool) {
+        guard !viewModel.searchResults.isEmpty else {
+            viewModel.sidebarTab = .search
+            viewModel.showSidebar = true
+            return
+        }
+        let count = viewModel.searchResults.count
+        viewModel.searchIndex = forward
+            ? (viewModel.searchIndex + 1) % count
+            : (viewModel.searchIndex - 1 + count) % count
+        viewModel.goTo(selection: viewModel.searchResults[viewModel.searchIndex])
+        flash("Match \(viewModel.searchIndex + 1) of \(count)")
     }
 
     // MARK: - Handlers
@@ -509,15 +587,36 @@ struct ContentView: View {
 
     private func showShortcuts() {
         let alert = NSAlert()
-        alert.messageText = "Keyboard Shortcuts"
+        alert.messageText = "Keyboard & Mouse"
         alert.informativeText = """
-        ⌘O Open      ⌘S Save      ⌘P Print      ⌘D Properties      ⌘, Preferences
-        ⌘Z Undo      ⇧⌘Z Redo     ⌘F Find      ⌥Q Command search
-        ⌘+ / ⌘− Zoom      ⌘1 Actual size      F11 Full screen
-        Delete  Remove the selected annotation
-        Return  Finish a polygon / polyline / cloud / measurement
-        Esc     Cancel the current shape, editor or AutoScroll
-        Double-click text you added  Edit it again
+        Foxit uses Ctrl on Windows; on macOS those map to ⌘.
+
+        FILE          ⌘O open · ⌘S save · ⇧⌘S save as · ⌘P print · ⌘W close
+        EDIT          ⌘Z undo · ⇧⌘Z redo · ⌘C copy · ⌘A select all
+        ZOOM          ⌘= in · ⌘- out · ⌘1 actual size · ⌘0 fit page · ⌘2 fit width · ⌘3 fit visible
+        VIEW          ⌘4 reflow · ⌘H read mode · ⌘6 text viewer · F11 full screen · ⇧⌘H autoscroll
+        PANELS        F4 navigation pane · ⌥⌘I properties panel
+        NAVIGATE      ⌘↑ / ⌘↓ page · Page Up / Page Down · ⌘Home first · ⌘End last
+                      ⇧⌘N go to page · ⌥← previous view · ⌥→ next view · Space / ⇧Space scroll
+        SEARCH        ⌘F find · ⌘G find next · ⇧⌘G find previous · ⇧⌘F search panel
+        DOCUMENT      ⇧⌘T organize pages · ⌘D properties · ⌘K preferences · ⌥Q command search
+
+        TOOLS (single-key, switchable in Preferences ▸ Keys & Mouse)
+        H hand · V select · Z marquee · G snapshot · U highlight · T text · S note
+        P pencil · K callout · R rectangle · O oval · L line · A arrow · E eraser
+        D distance · X redact
+
+        MOUSE
+        ⌘ or Control + wheel   zoom about the pointer
+        Shift + wheel          scroll sideways
+        Middle button          start / stop AutoScroll
+        Right click            context menu (delete, edit text, copy, highlight, zoom)
+        Double-click text you added   reopen it for editing
+
+        EDITING
+        Delete        remove the selected annotation
+        Return        finish a polygon / polyline / cloud / measurement
+        Esc           cancel the current shape, editor, AutoScroll or full screen
         """
         alert.runModal()
     }

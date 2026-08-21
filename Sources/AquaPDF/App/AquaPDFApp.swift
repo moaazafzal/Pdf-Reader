@@ -14,6 +14,7 @@ struct AquaPDFApp: App {
             CommandGroup(after: .windowList) {
                 Button("Welcome to AquaPDF") { StartWindowController.shared.show() }
             }
+            AquaPDFCommands()
         }
     }
 }

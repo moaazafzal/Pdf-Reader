@@ -10,6 +10,7 @@ final class DocViewModel: ObservableObject {
     @Published var selectedAnnotation: PDFAnnotation?
     @Published var searchText: String = ""
     @Published var searchResults: [PDFSelection] = []
+    @Published var searchIndex: Int = 0
     @Published var currentPageIndex: Int = 0
     @Published var pageCount: Int = 0
     @Published var scaleFactor: CGFloat = 1
@@ -103,6 +104,7 @@ final class DocViewModel: ObservableObject {
             return
         }
         searchResults = document.findString(searchText, withOptions: .caseInsensitive)
+        searchIndex = 0
     }
 
     func goTo(selection: PDFSelection) {
