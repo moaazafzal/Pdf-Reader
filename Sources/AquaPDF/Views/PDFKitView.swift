@@ -8,6 +8,9 @@ struct PDFKitView: NSViewRepresentable {
     func makeNSView(context: Context) -> AnnotatingPDFView {
         let view = AnnotatingPDFView()
         view.viewModel = viewModel
+        if viewModel.pageCount != document.pageCount {
+            DispatchQueue.main.async { viewModel.pageCount = document.pageCount }
+        }
         view.document = document
         view.autoScales = true
         view.displayMode = .singlePageContinuous
@@ -43,8 +46,15 @@ struct PDFKitView: NSViewRepresentable {
         if context.coordinator.lastTool != viewModel.tool {
             context.coordinator.lastTool = viewModel.tool
             view.toolDidChange()  // commits any in-place text editor
+            view.needsDisplay = true
         }
-        view.setNeedsDisplay(view.bounds)  // keep selection handles in sync
+        // Only repaint when the selection actually changed. Redrawing on every
+        // SwiftUI update forced a full PDFKit tile re-render and pegged the CPU.
+        let selection = viewModel.selectedAnnotation
+        if context.coordinator.lastSelection !== selection {
+            context.coordinator.lastSelection = selection
+            view.needsDisplay = true
+        }
 
         // Markup and drawing tools need our drag handling; select mode keeps native text selection.
         switch viewModel.tool {
@@ -61,6 +71,7 @@ struct PDFKitView: NSViewRepresentable {
     final class Coordinator: NSObject {
         let viewModel: DocViewModel
         var lastTool: Tool = .select
+        weak var lastSelection: PDFAnnotation?
         init(viewModel: DocViewModel) { self.viewModel = viewModel }
 
         @objc func pageChanged(_ note: Notification) {
@@ -68,12 +79,16 @@ struct PDFKitView: NSViewRepresentable {
                   let page = view.currentPage,
                   let doc = view.document
             else { return }
-            viewModel.currentPageIndex = doc.index(for: page)
+            let index = doc.index(for: page)
+            if viewModel.currentPageIndex != index { viewModel.currentPageIndex = index }
         }
 
         @objc func scaleChanged(_ note: Notification) {
             guard let view = note.object as? PDFView else { return }
-            viewModel.scaleFactor = view.scaleFactor
+            // Coalesce tiny changes: scrolling emits a stream of scale notifications.
+            if abs(viewModel.scaleFactor - view.scaleFactor) > 0.001 {
+                viewModel.scaleFactor = view.scaleFactor
+            }
         }
     }
 }

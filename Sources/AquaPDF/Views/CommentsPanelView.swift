@@ -84,9 +84,12 @@ struct CommentsPanelView: View {
     }
 
     private func filteredEntries() -> [Entry] {
-        _ = viewModel.annotationsVersion  // re-read when annotations change
-        var entries = CommentExchange.allComments(in: document)
-            .map { Entry(annotation: $0.annotation, pageIndex: $0.pageIndex) }
+        // Rescanning every page on each body evaluation is expensive on large documents,
+        // so the raw scan is cached until the annotations actually change.
+        var entries = CommentScanCache.shared.entries(
+            for: document,
+            version: viewModel.annotationsVersion
+        ).map { Entry(annotation: $0.annotation, pageIndex: $0.pageIndex) }
 
         if !filterText.isEmpty {
             let needle = filterText.lowercased()
@@ -243,5 +246,24 @@ struct CommentsPanelView: View {
             at: CGPoint(x: entry.annotation.bounds.midX, y: entry.annotation.bounds.maxY)
         ))
         viewModel.selectedAnnotation = entry.annotation
+    }
+}
+
+
+/// Caches the page-by-page annotation scan behind the Comments panel.
+@MainActor
+final class CommentScanCache {
+    static let shared = CommentScanCache()
+
+    private var cachedVersion = -1
+    private weak var cachedDocument: PDFDocument?
+    private var cached: [CommentExchange.Entry] = []
+
+    func entries(for document: PDFDocument, version: Int) -> [CommentExchange.Entry] {
+        if cachedVersion == version, cachedDocument === document { return cached }
+        cached = CommentExchange.allComments(in: document)
+        cachedVersion = version
+        cachedDocument = document
+        return cached
     }
 }

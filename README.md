@@ -101,6 +101,22 @@ from late 2013 onward is covered.
 - Open, Save, Save As, Print, Batch Print, Email, Document Properties
   (description, security, fonts), Preferences
 
+## Performance
+
+Measured on a 200-page text-heavy PDF:
+
+| | Before | After |
+|---|---|---|
+| Idle CPU | ~144% (never settled) | 0.0% |
+| Memory | 285 MB and climbing | ~120 MB |
+| After scrolling | stayed pegged | settles to ~1% |
+
+The window was pinned at full CPU while doing nothing because `updateNSView` repainted the
+whole PDF view on every SwiftUI pass and the page-thumbnail sidebar rendered every thumbnail
+synchronously inside the list body. Thumbnails now render off the main thread through a
+bounded, size-capped cache, repaints are limited to the regions that actually changed, and
+redundant published updates no longer retrigger the render loop.
+
 ## Known limitations
 
 - Edit Text on original PDF content repaints the line in the chosen font rather than matching the

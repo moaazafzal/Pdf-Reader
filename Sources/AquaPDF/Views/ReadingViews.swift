@@ -23,7 +23,7 @@ struct ReflowView: View {
 
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 18) {
-                    ForEach(0..<document.pageCount, id: \.self) { i in
+                    ForEach(Array(0..<document.pageCount), id: \.self) { i in
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Page \(i + 1)")
                                 .font(.caption)

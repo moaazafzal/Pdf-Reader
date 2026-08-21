@@ -49,6 +49,7 @@ final class PDFFileDocument: ReferenceFileDocument {
             guard let restored = PDFDocument(data: previousData) else { return }
             target.objectWillChange.send()
             target.pdf = restored
+            ThumbnailCache.shared.invalidate()
             target.registerContentUndo(undoManager, actionName: actionName, previousData: currentData)
         }
         undoManager?.setActionName(actionName)

@@ -123,34 +123,35 @@ struct ThumbnailListView: View {
     let document: PDFDocument
     @ObservedObject var viewModel: DocViewModel
 
+    private let thumbSize = CGSize(width: 140, height: 190)
+
     var body: some View {
         ScrollViewReader { proxy in
-            List(0..<max(document.pageCount, 0), id: \.self) { i in
-                if let page = document.page(at: i) {
-                    VStack(spacing: 4) {
-                        Image(nsImage: page.thumbnail(of: CGSize(width: 140, height: 190), for: .mediaBox))
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxWidth: 140, maxHeight: 190)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 3)
-                                    .stroke(i == viewModel.currentPageIndex ? Color.accentColor : Color.secondary.opacity(0.3),
-                                            lineWidth: i == viewModel.currentPageIndex ? 2 : 1)
-                            )
-                        Text("\(i + 1)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+            ScrollView {
+                LazyVStack(spacing: 10) {
+                    ForEach(Array(0..<max(document.pageCount, 0)), id: \.self) { i in
+                        VStack(spacing: 4) {
+                            PageThumbnail(document: document, index: i, size: thumbSize)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 3)
+                                        .stroke(i == viewModel.currentPageIndex ? Color.accentColor : Color.secondary.opacity(0.3),
+                                                lineWidth: i == viewModel.currentPageIndex ? 2 : 1)
+                                )
+                            Text("\(i + 1)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if let page = document.page(at: i) { viewModel.pdfView?.go(to: page) }
+                        }
+                        .id(i)
                     }
-                    .frame(maxWidth: .infinity)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        viewModel.pdfView?.go(to: page)
-                    }
-                    .id(i)
                 }
+                .padding(.vertical, 8)
             }
             .onChange(of: viewModel.currentPageIndex) { newValue in
-                proxy.scrollTo(newValue)
+                proxy.scrollTo(newValue, anchor: .center)
             }
         }
     }

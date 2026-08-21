@@ -38,7 +38,7 @@ struct PageOrganizerView: View {
             ScrollView {
                 let _ = refresh
                 LazyVGrid(columns: columns, spacing: 16) {
-                    ForEach(0..<document.pageCount, id: \.self) { i in
+                    ForEach(Array(0..<document.pageCount), id: \.self) { i in
                         pageCell(i)
                     }
                 }
@@ -50,12 +50,9 @@ struct PageOrganizerView: View {
 
     @ViewBuilder
     private func pageCell(_ i: Int) -> some View {
-        if let page = document.page(at: i) {
+        if document.page(at: i) != nil {
             VStack(spacing: 4) {
-                Image(nsImage: page.thumbnail(of: CGSize(width: 130, height: 170), for: .mediaBox))
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxHeight: 170)
+                PageThumbnail(document: document, index: i, size: CGSize(width: 130, height: 170))
                     .overlay(
                         RoundedRectangle(cornerRadius: 4)
                             .stroke(selection.contains(i) ? Color.accentColor : Color.secondary.opacity(0.3),
@@ -87,6 +84,7 @@ struct PageOrganizerView: View {
         document.removePage(at: i)
         document.insert(page, at: j)
         selection = []
+        ThumbnailCache.shared.invalidate()
         refresh += 1
         onChanged(before)
     }
@@ -97,16 +95,19 @@ struct PageOrganizerView: View {
             guard let page = document.page(at: i) else { continue }
             page.rotation = ((page.rotation + degrees) % 360 + 360) % 360
         }
+        ThumbnailCache.shared.invalidate()
         refresh += 1
         onChanged(before)
     }
 
     private func deleteSelected() {
         let before = document.dataRepresentation()
-        for i in selection.sorted(by: >) {
+        // Guard the index: the selection was captured before any earlier removals.
+        for i in selection.sorted(by: >) where i < document.pageCount {
             document.removePage(at: i)
         }
         selection = []
+        ThumbnailCache.shared.invalidate()
         refresh += 1
         onChanged(before)
     }

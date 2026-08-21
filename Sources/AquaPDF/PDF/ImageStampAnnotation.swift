@@ -13,7 +13,8 @@ final class ImageStampAnnotation: PDFAnnotation {
     }
 
     required init?(coder: NSCoder) {
-        fatalError("init(coder:) is not supported")
+        image = coder.decodeObject(forKey: "image") as? NSImage ?? NSImage(size: .zero)
+        super.init(coder: coder)
     }
 
     override func draw(with box: PDFDisplayBox, in context: CGContext) {

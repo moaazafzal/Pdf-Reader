@@ -569,6 +569,7 @@ struct ContentView: View {
         guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
         let before = document.pdf.dataRepresentation()
         PDFOperations.merge(urls: panel.urls, into: document.pdf)
+        ThumbnailCache.shared.invalidate()
         document.registerContentUndo(undoManager, actionName: "Merge PDFs", previousData: before)
         document.objectWillChange.send()
         viewModel.pageCount = document.pdf.pageCount
@@ -627,6 +628,7 @@ struct ContentView: View {
         ) else { return }
         let before = document.pdf.dataRepresentation()
         let n = PDFOperations.applyRedactions(in: document.pdf)
+        ThumbnailCache.shared.invalidate()
         if n == 0 {
             flash("No redaction marks found — use the Redact tool to mark areas first")
             return

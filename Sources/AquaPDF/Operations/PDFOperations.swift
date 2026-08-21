@@ -174,24 +174,31 @@ enum PDFOperations {
 
     /// Renders a page-space rectangle to an image (SnapShot, loupe, magnifier).
     static func renderRegion(_ rect: CGRect, of page: PDFPage, scale: CGFloat = 2) -> NSImage? {
-        guard rect.width > 0, rect.height > 0 else { return nil }
-        let pageBounds = page.bounds(for: .mediaBox)
-        let fullSize = CGSize(width: pageBounds.width * scale, height: pageBounds.height * scale)
-        let full = page.thumbnail(of: fullSize, for: .mediaBox)
+        guard rect.width > 0, rect.height > 0, let cgPage = page.pageRef else { return nil }
+        let pixelSize = CGSize(width: max(rect.width * scale, 1), height: max(rect.height * scale, 1))
 
-        let pixelSize = CGSize(width: rect.width * scale, height: rect.height * scale)
-        let crop = NSImage(size: pixelSize)
-        crop.lockFocus()
-        // Page space and NSImage space are both bottom-left origin.
-        let source = NSRect(
-            x: (rect.minX - pageBounds.minX) * scale,
-            y: (rect.minY - pageBounds.minY) * scale,
-            width: pixelSize.width,
-            height: pixelSize.height
-        )
-        full.draw(in: NSRect(origin: .zero, size: pixelSize), from: source, operation: .copy, fraction: 1)
-        crop.unlockFocus()
-        return crop
+        // Draw only the requested region. Rendering the whole page and cropping made
+        // the loupe and SnapShot far more expensive than they needed to be.
+        guard let ctx = CGContext(
+            data: nil,
+            width: Int(pixelSize.width),
+            height: Int(pixelSize.height),
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+
+        ctx.setFillColor(CGColor(gray: 1, alpha: 1))
+        ctx.fill(CGRect(origin: .zero, size: pixelSize))
+        ctx.scaleBy(x: scale, y: scale)
+        ctx.translateBy(x: -rect.minX, y: -rect.minY)
+        ctx.drawPDFPage(cgPage)
+        for annotation in page.annotations where annotation.shouldDisplay {
+            annotation.draw(with: .mediaBox, in: ctx)
+        }
+        guard let cgImage = ctx.makeImage() else { return nil }
+        return NSImage(cgImage: cgImage, size: rect.size)
     }
 
     // MARK: - Merge / split / extract

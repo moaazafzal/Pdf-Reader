@@ -363,9 +363,12 @@ final class AnnotatingPDFView: PDFView {
                 newRect = line.rect
             }
             if newRect != hoverRect || page !== hoverPage {
+                // Repaint only the old and new highlight rects, not the whole view.
+                let oldRect = hoverRect, oldPage = hoverPage
                 hoverPage = newRect.isNull ? nil : page
                 hoverRect = newRect
-                setNeedsDisplay(bounds)
+                invalidate(pageRect: oldRect, on: oldPage)
+                invalidate(pageRect: newRect, on: page)
             }
         case .textBox, .callout:
             NSCursor.iBeam.set()
@@ -390,9 +393,18 @@ final class AnnotatingPDFView: PDFView {
 
     private func clearHover() {
         guard hoverPage != nil || !hoverRect.isNull else { return }
+        let oldRect = hoverRect, oldPage = hoverPage
         hoverPage = nil
         hoverRect = .null
-        setNeedsDisplay(bounds)
+        invalidate(pageRect: oldRect, on: oldPage)
+    }
+
+    /// Marks just the view region covering a page-space rect as needing redraw.
+    private func invalidate(pageRect: CGRect, on page: PDFPage?) {
+        guard let page, !pageRect.isNull, !pageRect.isEmpty else { return }
+        let viewRect = convert(pageRect.insetBy(dx: -8, dy: -8), from: page)
+        guard !viewRect.isNull, !viewRect.isEmpty else { return }
+        setNeedsDisplay(viewRect.intersection(bounds))
     }
 
     override func keyDown(with event: NSEvent) {
@@ -451,8 +463,15 @@ final class AnnotatingPDFView: PDFView {
     override func draw(_ page: PDFPage, to context: CGContext) {
         super.draw(page, to: context)
 
+        // Fast path: nothing of ours to draw on this page. This runs for every rendered
+        // tile, so it must stay cheap.
+        let hasHover = hoverPage === page && !hoverRect.isNull
+        let selected = viewModel?.selectedAnnotation
+        let hasSelection = selected != nil && selected?.page === page
+        guard hasHover || hasSelection else { return }
+
         // Edit Text hover: outline the line under the cursor so the editable area is visible.
-        if hoverPage === page, !hoverRect.isNull {
+        if hasHover {
             context.saveGState()
             context.setStrokeColor(NSColor.controlAccentColor.cgColor)
             context.setLineWidth(1.5 / max(scaleFactor, 0.1))
@@ -464,7 +483,7 @@ final class AnnotatingPDFView: PDFView {
             context.restoreGState()
         }
 
-        guard let selected = viewModel?.selectedAnnotation, selected.page === page else { return }
+        guard hasSelection, let selected else { return }
 
         context.saveGState()
         context.setStrokeColor(NSColor.controlAccentColor.cgColor)
@@ -1273,7 +1292,11 @@ final class StampTextAnnotation: PDFAnnotation {
     }
 
     required init?(coder: NSCoder) {
-        fatalError("init(coder:) is not supported")
+        // PDFKit can archive/unarchive annotations while copying pages or writing a
+        // document; trapping here would crash the app, so decode into a plain stamp.
+        text = coder.decodeObject(forKey: "text") as? String ?? ""
+        stampColor = coder.decodeObject(forKey: "stampColor") as? NSColor ?? .systemRed
+        super.init(coder: coder)
     }
 
     override func draw(with box: PDFDisplayBox, in context: CGContext) {

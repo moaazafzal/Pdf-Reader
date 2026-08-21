@@ -42,7 +42,15 @@ final class PathAnnotation: PDFAnnotation {
     }
 
     required init?(coder: NSCoder) {
-        fatalError("init(coder:) is not supported")
+        // PDFKit archives annotations when copying pages or writing documents.
+        // Trapping here would crash the app, so decode into a usable default.
+        kind = Kind(rawValue: coder.decodeObject(forKey: "kind") as? String ?? "") ?? .polyline
+        points = []
+        strokeColor = coder.decodeObject(forKey: "strokeColor") as? NSColor ?? .systemYellow
+        fillColor = nil
+        strokeWidth = CGFloat(coder.decodeDouble(forKey: "strokeWidth"))
+        dashed = coder.decodeBool(forKey: "dashed")
+        super.init(coder: coder)
     }
 
     static func bounds(of points: [CGPoint], padding: CGFloat) -> CGRect {
@@ -171,7 +179,11 @@ final class MeasureAnnotation: PDFAnnotation {
     }
 
     required init?(coder: NSCoder) {
-        fatalError("init(coder:) is not supported")
+        kind = .distance
+        points = []
+        scale = MeasureScale()
+        strokeColor = coder.decodeObject(forKey: "strokeColor") as? NSColor ?? .systemYellow
+        super.init(coder: coder)
     }
 
     static func measurementText(kind: Kind, points: [CGPoint], scale: MeasureScale) -> String {
@@ -322,7 +334,12 @@ final class CalloutAnnotation: PDFAnnotation {
     }
 
     required init?(coder: NSCoder) {
-        fatalError("init(coder:) is not supported")
+        text = coder.decodeObject(forKey: "text") as? String ?? ""
+        target = .zero
+        textFont = coder.decodeObject(forKey: "textFont") as? NSFont ?? .systemFont(ofSize: 12)
+        textColor = coder.decodeObject(forKey: "textColor") as? NSColor ?? .black
+        strokeColor = coder.decodeObject(forKey: "strokeColor") as? NSColor ?? .systemYellow
+        super.init(coder: coder)
     }
 
     /// Text box in page space (the leader line runs from here to `target`).
